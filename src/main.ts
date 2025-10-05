@@ -377,53 +377,42 @@ class Sequencer {
     });
 
     // Audio file inputs
-    document.getElementById('melody-sound-input')?.addEventListener('change', (e) => {
-      const target = e.target as HTMLInputElement;
-      const fileText = target.nextElementSibling! as HTMLElement;
-      if (target.files?.[0]) {
-        this.files.melody = target.files[0];
-        fileText.dataset.i18n = '';
-        fileText.textContent = this.files.melody.name;
-        this.audioManager.setMelodySample(this.files.melody);
-      }
-    });
+    ['melody', 'beat1', 'beat2'].forEach(track => {
+      const fileInput = document.getElementById(`${track}-sound-input`) as HTMLInputElement;
+      const fileText = document.querySelector(`#${track}-sound-input + .file-text`) as HTMLElement;
+      fileInput.addEventListener('change', () => {
+        if (fileInput.files?.[0]) {
+          this.files[track] = fileInput.files[0];
+          fileText.dataset.i18n = '';
+          fileText.textContent = this.files[track]!.name;
+          if (track === 'melody') {
+            this.audioManager.setMelodySample(this.files.melody);
+          } else if (track === 'beat1') {
+            this.audioManager.setBeatSample(0, this.files.beat1);
+          } else if (track === 'beat2') {
+            this.audioManager.setBeatSample(1, this.files.beat2);
+          }
+        }
+      });
 
-    document.getElementById('use-sine-melody')?.addEventListener('click', () => {
-      this.files.melody = null;
-      const fileInput = document.getElementById('melody-sound-input') as HTMLInputElement;
-      const fileText = document.querySelector('#melody-sound-input + .file-text') as HTMLElement;
-
-      fileInput.value = '';
-      fileText.dataset.i18n = 'select_file';
-      fileText.textContent = i18next.t('select_file');
-      this.audioManager.setMelodySample(null);
+      document.getElementById(`${track}-sine-btn`)?.addEventListener('click', () => {
+        this.files[track] = null;
+        fileInput.value = '';
+        fileText.dataset.i18n = 'select_file';
+        fileText.textContent = i18next.t('select_file');
+        if (track === 'melody') {
+          this.audioManager.setMelodySample(null);
+        } else if (track === 'beat1') {
+          this.audioManager.setBeatSample(0, null);
+        } else if (track === 'beat2') {
+          this.audioManager.setBeatSample(1, null);
+        }
+      });
     });
 
     document.getElementById('melody-pitch-shift')?.addEventListener('input', (e) => {
       const pitchShift = (e.target as HTMLInputElement).valueAsNumber || 0;
       this.audioManager.setMelodyPitchShift(pitchShift);
-    });
-
-    [1, 2].forEach(track => {
-      const fileInput = document.getElementById(`beat${track}-sound-input`) as HTMLInputElement;
-      const fileText = document.querySelector(`#beat${track}-sound-input + .file-text`) as HTMLElement;
-      fileInput.addEventListener('change', () => {
-        if (fileInput.files?.[0]) {
-          this.files[`beat${track}`] = fileInput.files[0];
-          fileText.dataset.i18n = '';
-          fileText.textContent = this.files[`beat${track}`]!.name;
-          this.audioManager.setBeatSample(track, this.files[`beat${track}`]);
-        }
-      });
-
-      document.getElementById(`beat${track}-sine-btn`)?.addEventListener('click', () => {
-        this.files[`beat${track}`] = null;
-        
-        fileInput.value = '';
-        fileText.dataset.i18n = 'select_file';
-        fileText.textContent = i18next.t('select_file');
-        this.audioManager.setBeatSample(track, null);
-      });
     });
 
     document.getElementById('clear-btn')?.addEventListener('click', () => {
@@ -781,7 +770,7 @@ class Sequencer {
     localForage.setItem('bpm', this.bpm);
     localForage.setItem('audioFiles', this.files);
 
-    const melodyPitchShift = (document.getElementById('melody-pitch-shift') as HTMLInputElement).valueAsNumber || 0;
+    const melodyPitchShift = (document.getElementById('melody-pitch-shift') as HTMLInputElement).valueAsNumber;
     localForage.setItem('melodyPitchShift', melodyPitchShift);
   }
 
@@ -856,6 +845,15 @@ class Sequencer {
     });
     this.beats = [];
     this.bpm = 120;
+    this.files = {
+      melody: null,
+      beat1: null,
+      beat2: null
+    };
+    this.audioManager.setMelodySample(null);
+    this.audioManager.setMelodyPitchShift(0);
+    this.audioManager.setBeatSample(0, null);
+    this.audioManager.setBeatSample(1, null);
 
     // Clear UI
     document.querySelector('.track-item.active')?.classList.remove('active');
@@ -868,18 +866,17 @@ class Sequencer {
     if (bpmValue) bpmValue.textContent = this.bpm.toString();
     const loopToggle = document.getElementById('loop-toggle') as HTMLInputElement;
     if (loopToggle) loopToggle.checked = true;
-    const melodyInput = document.getElementById('melody-sound-input') as HTMLInputElement;
-    if (melodyInput) melodyInput.value = '';
-    this.audioManager.setMelodySample(null);
+    ['melody', 'beat1', 'beat2'].forEach(track => {
+      const soundInput = document.getElementById(`${track}-sound-input`) as HTMLInputElement;
+      if (soundInput) {
+        soundInput.value = '';
+        const fileText = document.querySelector(`#${track}-sound-input + .file-text`) as HTMLElement;
+        fileText.dataset.i18n = 'select_file';
+        fileText.textContent = i18next.t('select_file');
+      }
+    });
     const pitchShiftInput = document.getElementById('melody-pitch-shift') as HTMLInputElement;
     if (pitchShiftInput) pitchShiftInput.value = '';
-    this.audioManager.setMelodyPitchShift(0);
-    const beat1Input = document.getElementById('beat1-sound-input') as HTMLInputElement;
-    if (beat1Input) beat1Input.value = '';
-    this.audioManager.setBeatSample(0, null);
-    const beat2Input = document.getElementById('beat2-sound-input') as HTMLInputElement;
-    if (beat2Input) beat2Input.value = '';
-    this.audioManager.setBeatSample(1, null);
     this.saveData();
   }
 
