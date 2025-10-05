@@ -883,10 +883,10 @@ class Sequencer {
     this.currentBeat = 0;
     this.renderPlayButton();
 
-    const beatDuration = 60 / this.bpm / 2; // 8th note duration
-
     const playLoop = () => {
       if (!this.isPlaying) return;
+
+      const beatDuration = 60 / this.bpm / 2; // 8th note duration
 
       // Play notes at current beat
       this.notes.forEach(trackNotes => {
