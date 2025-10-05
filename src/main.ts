@@ -330,20 +330,12 @@ class Sequencer {
 
   private setupEventListeners() {
     // Playback controls
-    document.getElementById('play-btn')?.addEventListener('click', (e) => {
-      const btn = e.currentTarget as HTMLButtonElement;
+    document.getElementById('play-btn')?.addEventListener('click', () => {
       if (this.isPlaying) {
-        btn.textContent = 'play_arrow';
-        btn.dataset.i18n = 'play';
-        btn.title = i18next.t('play');
         this.stop();
       } else {
-        btn.textContent = 'stop';
-        btn.dataset.i18n = 'stop';
-        btn.title = i18next.t('stop');
         this.play();
       }
-      btn.classList.toggle('is-playing');
     });
 
     document.addEventListener('pointerdown', (e) => {
@@ -898,6 +890,7 @@ class Sequencer {
     this.audioManager.stopAllPreviews();
     this.isPlaying = true;
     this.currentBeat = 0;
+    this.renderPlayButton();
 
     const beatDuration = 60 / this.bpm / 2; // 8th note duration
 
@@ -942,6 +935,22 @@ class Sequencer {
   private stop() {
     this.isPlaying = false;
     this.currentBeat = 0;
+    this.renderPlayButton();
+  }
+  
+  private renderPlayButton() {
+    const playBtn = document.getElementById('play-btn') as HTMLButtonElement;
+    if (this.isPlaying) {
+      playBtn.classList.add('is-playing');
+      playBtn.textContent = 'stop';
+      playBtn.dataset.i18n = 'stop';
+      playBtn.title = i18next.t('stop');
+    } else {
+      playBtn.classList.remove('is-playing');
+      playBtn.textContent = 'play_arrow';
+      playBtn.dataset.i18n = 'play';
+      playBtn.title = i18next.t('play');
+    }
   }
 }
 
