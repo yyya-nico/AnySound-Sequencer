@@ -330,8 +330,21 @@ class Sequencer {
 
   private setupEventListeners() {
     // Playback controls
-    document.getElementById('play-btn')?.addEventListener('click', () => this.play());
-    document.getElementById('stop-btn')?.addEventListener('click', () => this.stop());
+    document.getElementById('play-btn')?.addEventListener('click', (e) => {
+      const btn = e.currentTarget as HTMLButtonElement;
+      if (this.isPlaying) {
+        btn.textContent = 'play_arrow';
+        btn.dataset.i18n = 'play';
+        btn.title = i18next.t('play');
+        this.stop();
+      } else {
+        btn.textContent = 'stop';
+        btn.dataset.i18n = 'stop';
+        btn.title = i18next.t('stop');
+        this.play();
+      }
+      btn.classList.toggle('is-playing');
+    });
 
     document.addEventListener('pointerdown', (e) => {
       if (e.button !== 0) return; // 左クリックのみ
@@ -915,7 +928,7 @@ class Sequencer {
         const loopToggle = document.getElementById('loop-toggle') as HTMLInputElement;
         if (!loopToggle.checked) {
           this.stop();
-        return;
+          return;
         }
         this.currentBeat = 0;
       }

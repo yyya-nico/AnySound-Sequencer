@@ -442,21 +442,13 @@ header {
       &:hover {
         background: #45a049;
       }
-    }
 
-    &#stop-btn {
-      background: #f44336;
+      &.is-playing {
+        background: #f44336;
 
-      &:hover {
-        background: #da190b;
-      }
-    }
-
-    &#record-btn {
-      background: #ff9800;
-
-      &:hover {
-        background: #e68900;
+        &:hover {
+          background: #da190b;
+        }
       }
     }
   }
