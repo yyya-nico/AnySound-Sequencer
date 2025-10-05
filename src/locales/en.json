@@ -10,6 +10,7 @@
   "melody_sound": "Melody Sound",
   "beat_1_sound": "Beat 1 Sound",
   "beat_2_sound": "Beat 2 Sound",
+  "select_file": "Select File",
   "use_sine_wave": "Use Sine Wave",
   "pitch_shift": "Pitch Shift\n(File Only)",
   "melody_volume": "Melody Volume",

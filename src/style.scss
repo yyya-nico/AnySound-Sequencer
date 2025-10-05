@@ -169,6 +169,7 @@ button {
   color: lightgray;
   font-size: 1em;
   font-family: inherit;
+  line-height: inherit;
   cursor: pointer;
   user-select: none;
 
@@ -536,23 +537,50 @@ header {
       }
     }
 
-    input[type="file"] {
-      width: 100%;
-      padding: 8px;
-      background: #333;
-      border: 1px solid #555;
-      border-radius: 3px;
-      color: #ccc;
-      font-size: 12px;
+    .file-label {
+      position: relative;
 
-      &::file-selector-button {
-        background: #555;
-        border: none;
-        color: #ccc;
-        padding: 5px 10px;
-        border-radius: 3px;
+      input[type="file"] {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
         cursor: pointer;
-        margin-right: 10px;
+        &::file-selector-button {
+          display: none;
+        }
+
+        &:hover {
+          + .file-text {
+            background-color: #555555;
+            color: white;
+          }
+        }
+
+        &:active {
+          + .file-text {
+            background-color: #111111;
+            color: gray;
+          }
+        }
+
+        &:disabled {
+          cursor: not-allowed;
+
+          + .file-text {
+            background-color: #111111;
+            color: #7f7f7f;
+          }
+        }
+      }
+
+      .file-text {
+        display: block;
+        padding: 8px;
+        font-size: 12px;
+        background: #444;
+        border-radius: 5px;
+        color: #ccc;
+        text-align: center;
       }
     }
 
@@ -563,7 +591,13 @@ header {
       background: #444;
 
       &:hover {
-        background: #555;
+        background-color: #555555;
+        color: white;
+      }
+
+      &:active {
+        background-color: #111111;
+        color: gray;
       }
     }
   }

@@ -45,7 +45,7 @@
         <!-- 再生コントロール -->
         <div class="playback-controls">
           <button id="play-btn" class="material-icons" data-i18n="play" title="Play">play_arrow</button>
-          <label for="loop-toggle"><input type="checkbox" id="loop-toggle"><span data-i18n="loop">Loop</span></label>
+          <label for="loop-toggle"><input type="checkbox" id="loop-toggle" checked><span data-i18n="loop">Loop</span></label>
         </div>
         
         <!-- BPM設定 -->
@@ -69,7 +69,10 @@
         <div class="sound-selection">
           <div class="sound-group">
             <label data-i18n="melody_sound">Melody Sound</label>
-            <input type="file" id="melody-sound-input" accept="audio/*">
+            <label class="file-label" for="melody-sound-input">
+              <input type="file" id="melody-sound-input" accept="audio/*">
+              <span class="file-text" data-i18n="select_file">Select File</span>
+            </label>
             <button id="use-sine-melody" data-i18n="use_sine_wave">Use Sine Wave</button>
             <label for="melody-pitch-shift">
               <span data-i18n="pitch_shift">Pitch Shift<br>(File Only)</span>
@@ -79,13 +82,19 @@
           
           <div class="sound-group">
             <label><span data-i18n="beat_1_sound">Beat 1 Sound</span></label>
-            <input type="file" id="beat1-sound-input" accept="audio/*">
+            <label class="file-label" for="beat1-sound-input">
+              <input type="file" id="beat1-sound-input" accept="audio/*">
+              <span class="file-text" data-i18n="select_file">Select File</span>
+            </label>
             <button id="use-sine-beat1" data-i18n="use_sine_wave">Use Sine Wave</button>
           </div>
           
           <div class="sound-group">
             <label><span data-i18n="beat_2_sound">Beat 2 Sound</span></label>
-            <input type="file" id="beat2-sound-input" accept="audio/*">
+            <label class="file-label" for="beat2-sound-input">
+              <input type="file" id="beat2-sound-input" accept="audio/*">
+              <span class="file-text" data-i18n="select_file">Select File</span>
+            </label>
             <button id="use-sine-beat2" data-i18n="use_sine_wave">Use Sine Wave</button>
           </div>
         </div>

@@ -88,6 +88,10 @@ interface Beat {
   velocity: number; // 0-127
 }
 
+interface Files {
+  [key: string]: File | null;
+}
+
 interface AudioSample {
   buffer: AudioBuffer | null;
   type: 'sine' | 'file';
@@ -308,6 +312,11 @@ class Sequencer {
   private audioManager: AudioManager;
   private notes: Map<string, Note[]> = new Map(); // track -> notes
   private beats: Beat[] = [];
+  private files: Files = {
+    melody: null,
+    beat1: null,
+    beat2: null,
+  };
   private currentTrack: number = 0;
   private bpm: number = 120;
   private defaultNoteLength: number = 1;
@@ -369,14 +378,25 @@ class Sequencer {
 
     // Audio file inputs
     document.getElementById('melody-sound-input')?.addEventListener('change', (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      this.audioManager.setMelodySample(file || null);
+      const target = e.target as HTMLInputElement;
+      const fileText = target.nextElementSibling! as HTMLElement;
+      if (target.files?.[0]) {
+        this.files.melody = target.files[0];
+        fileText.dataset.i18n = '';
+        fileText.textContent = this.files.melody.name;
+        this.audioManager.setMelodySample(this.files.melody);
+      }
     });
 
     document.getElementById('use-sine-melody')?.addEventListener('click', () => {
+      this.files.melody = null;
+      const fileInput = document.getElementById('melody-sound-input') as HTMLInputElement;
+      const fileText = document.querySelector('#melody-sound-input + .file-text') as HTMLElement;
+
+      fileInput.value = '';
+      fileText.dataset.i18n = 'select_file';
+      fileText.textContent = i18next.t('select_file');
       this.audioManager.setMelodySample(null);
-      const input = document.getElementById('melody-sound-input') as HTMLInputElement;
-      if (input) input.value = '';
     });
 
     document.getElementById('melody-pitch-shift')?.addEventListener('change', (e) => {
@@ -384,26 +404,26 @@ class Sequencer {
       this.audioManager.setMelodyPitchShift(pitchShift);
     });
 
-    document.getElementById('beat1-sound-input')?.addEventListener('change', (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      this.audioManager.setBeatSample(0, file || null);
-    });
+    [1, 2].forEach(track => {
+      const fileInput = document.getElementById(`beat${track}-sound-input`) as HTMLInputElement;
+      const fileText = document.querySelector(`#beat${track}-sound-input + .file-text`) as HTMLElement;
+      fileInput.addEventListener('change', () => {
+        if (fileInput.files?.[0]) {
+          this.files[`beat${track}`] = fileInput.files[0];
+          fileText.dataset.i18n = '';
+          fileText.textContent = this.files[`beat${track}`]!.name;
+          this.audioManager.setBeatSample(track, this.files[`beat${track}`]);
+        }
+      });
 
-    document.getElementById('use-sine-beat1')?.addEventListener('click', () => {
-      this.audioManager.setBeatSample(0, null);
-      const input = document.getElementById('beat1-sound-input') as HTMLInputElement;
-      if (input) input.value = '';
-    });
-
-    document.getElementById('beat2-sound-input')?.addEventListener('change', (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      this.audioManager.setBeatSample(1, file || null);
-    });
-
-    document.getElementById('use-sine-beat2')?.addEventListener('click', () => {
-      this.audioManager.setBeatSample(1, null);
-      const input = document.getElementById('beat2-sound-input') as HTMLInputElement;
-      if (input) input.value = '';
+      document.getElementById(`beat${track}-sine-btn`)?.addEventListener('click', () => {
+        this.files[`beat${track}`] = null;
+        
+        fileInput.value = '';
+        fileText.dataset.i18n = 'select_file';
+        fileText.textContent = i18next.t('select_file');
+        this.audioManager.setBeatSample(track, null);
+      });
     });
 
     document.getElementById('clear-btn')?.addEventListener('click', () => {
@@ -414,7 +434,6 @@ class Sequencer {
   }
 
   private initializePianoRoll() {
-    // const melodyKeys = document.querySelector('.melody-keys');
     const section = document.querySelector('.piano-roll-section') as HTMLElement;
     const pianoRoll = document.querySelector('.piano-roll-grid') as HTMLElement;
 
@@ -695,6 +714,8 @@ class Sequencer {
     const savedNotes = await localForage.getItem<{ [key: string]: Note[] }>('notes');
     const savedBeats = await localForage.getItem<Beat[]>('beats');
     const savedBpm = await localForage.getItem<number>('bpm');
+    const savedAudioFiles = await localForage.getItem<Files>('audioFiles');
+    const savedMelodyPitchShift = await localForage.getItem<number>('melodyPitchShift');
 
     if (savedNotes) {
       Object.keys(savedNotes).forEach(track => {
@@ -718,6 +739,34 @@ class Sequencer {
       if (bpmValue) bpmValue.textContent = this.bpm.toString();
     }
 
+    if (savedAudioFiles) {
+      this.files = savedAudioFiles;
+      if (this.files.melody) {
+        const fileText = document.querySelector('#melody-sound-input + .file-text') as HTMLElement;
+        fileText.dataset.i18n = '';
+        fileText.textContent = this.files.melody.name;
+        this.audioManager.setMelodySample(this.files.melody);
+      }
+      if (this.files.beat1) {
+        const fileText = document.querySelector('#beat1-sound-input + .file-text') as HTMLElement;
+        fileText.dataset.i18n = '';
+        fileText.textContent = this.files.beat1.name;
+        this.audioManager.setBeatSample(0, this.files.beat1);
+      }
+      if (this.files.beat2) {
+        const fileText = document.querySelector('#beat2-sound-input + .file-text') as HTMLElement;
+        fileText.dataset.i18n = '';
+        fileText.textContent = this.files.beat2.name;
+        this.audioManager.setBeatSample(1, this.files.beat2);
+      }
+    }
+
+    if (savedMelodyPitchShift !== null && !isNaN(savedMelodyPitchShift)) {
+      this.audioManager.setMelodyPitchShift(savedMelodyPitchShift);
+      const pitchShiftInput = document.getElementById('melody-pitch-shift') as HTMLInputElement;
+      if (pitchShiftInput) pitchShiftInput.valueAsNumber = savedMelodyPitchShift;
+    }
+
     this.renderCurrentTrack();
   }
 
@@ -730,6 +779,10 @@ class Sequencer {
     localForage.setItem('notes', notesToSave);
     localForage.setItem('beats', this.beats);
     localForage.setItem('bpm', this.bpm);
+    localForage.setItem('audioFiles', this.files);
+
+    const melodyPitchShift = (document.getElementById('melody-pitch-shift') as HTMLInputElement).valueAsNumber;
+    localForage.setItem('melodyPitchShift', melodyPitchShift);
   }
 
   private switchToNextTrack(direction: number) {
@@ -797,6 +850,7 @@ class Sequencer {
   }
 
   private clearAll() {
+    this.stop();
     this.notes.forEach((_, track) => {
       this.notes.set(track, []);
     });
@@ -804,12 +858,28 @@ class Sequencer {
     this.bpm = 120;
 
     // Clear UI
+    document.querySelector('.track-item.active')?.classList.remove('active');
+    document.querySelector('.track-item[data-track="0"]')?.classList.add('active');
     document.querySelectorAll('.note').forEach(note => note.remove());
     document.querySelectorAll('.beat.active').forEach(beat => beat.classList.remove('active'));
     const bpmSlider = document.getElementById('bpm-slider') as HTMLInputElement;
     const bpmValue = document.getElementById('bpm-value');
     if (bpmSlider) bpmSlider.value = this.bpm.toString();
     if (bpmValue) bpmValue.textContent = this.bpm.toString();
+    const loopToggle = document.getElementById('loop-toggle') as HTMLInputElement;
+    if (loopToggle) loopToggle.checked = true;
+    const melodyInput = document.getElementById('melody-sound-input') as HTMLInputElement;
+    if (melodyInput) melodyInput.value = '';
+    this.audioManager.setMelodySample(null);
+    const pitchShiftInput = document.getElementById('melody-pitch-shift') as HTMLInputElement;
+    if (pitchShiftInput) pitchShiftInput.value = '';
+    this.audioManager.setMelodyPitchShift(0);
+    const beat1Input = document.getElementById('beat1-sound-input') as HTMLInputElement;
+    if (beat1Input) beat1Input.value = '';
+    this.audioManager.setBeatSample(0, null);
+    const beat2Input = document.getElementById('beat2-sound-input') as HTMLInputElement;
+    if (beat2Input) beat2Input.value = '';
+    this.audioManager.setBeatSample(1, null);
     this.saveData();
   }
 
