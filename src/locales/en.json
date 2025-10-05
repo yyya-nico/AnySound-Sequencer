@@ -2,6 +2,7 @@
   "title": "AnySound Sequencer",
   "play": "Play",
   "stop": "Stop",
+  "loop": "Loop", 
   "record": "Record",
   "bpm": "BPM",
   "melody_track": "Melody Track",

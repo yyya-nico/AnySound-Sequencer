@@ -2,6 +2,7 @@
   "title": "AnySound シーケンサー",
   "play": "再生",
   "stop": "停止",
+  "loop": "ループ",
   "record": "録音",
   "bpm": "BPM",
   "melody_track": "メロディートラック",

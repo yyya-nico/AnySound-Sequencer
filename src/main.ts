@@ -909,11 +909,15 @@ class Sequencer {
 
       const endOfTrack = Math.max(16, Array.from(this.notes.values()).flat().map(n => n.start + n.length).reduce((a, b) => Math.max(a, b), 0));
 
-      this.currentBeat+= 0.5;
+      this.currentBeat += 0.5;
 
       if (this.currentBeat >= endOfTrack) {
-        this.isPlaying = false;
+        const loopToggle = document.getElementById('loop-toggle') as HTMLInputElement;
+        if (!loopToggle.checked) {
+          this.stop();
         return;
+        }
+        this.currentBeat = 0;
       }
 
       this.loopTimeout = setTimeout(playLoop, beatDuration * 1000);
