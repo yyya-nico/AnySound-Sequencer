@@ -603,11 +603,11 @@ class Sequencer {
         const rect = target.getBoundingClientRect();
         const x = pointerEvent.clientX - rect.left;
 
-        isResizable = x > rect.width - 10;
+        isResizable = x > rect.width - 5;
       } else {
         isResizable = false;
       }
-      if (isResizable) {
+      if (isResizable || isResizing) {
         pianoRoll.classList.add('note-resize');
       } else {
         pianoRoll.classList.remove('note-resize');
