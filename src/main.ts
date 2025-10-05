@@ -145,7 +145,7 @@ class AudioManager {
   }
 
   private midiToPercentage(midiNote: number, pitchShift: number = 0): number {
-    return Math.pow(2, (midiNote - 53 + pitchShift) / 12); // F3 as reference
+    return Math.pow(2, (midiNote - 60 + pitchShift) / 12); // C4 as reference
   }
 
   async loadAudioFile(file: File): Promise<AudioBuffer> {
