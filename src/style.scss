@@ -326,7 +326,7 @@ header {
 .piano-roll-section {
   overflow: auto;
   height: 100%;
-  margin-bottom: calc(var(--scrollbar-height, 0px) * -1);
+  margin-bottom: calc(var(--scrollbar-width, 0px) * -1);
   border-bottom: 2px solid #333;
   background: #1e1e1e;
 }
@@ -356,9 +356,9 @@ header {
 
 .rhythm-section {
   flex-basis: 200px;
-  display: flex;
-  flex-direction: column;
   overflow: auto;
+  // scrollbar-gutter: stable;
+  background: #1e1e1e;
 }
 
 .melody-keys {
@@ -372,33 +372,29 @@ header {
 .rhythm-tracks {
   display: flex;
   flex-direction: column;
+  position: relative;
   width: fit-content;
   height: 100%;
-  background-color: #1e1e1e;
   background-image: linear-gradient(to right, #333 2px, transparent 1px);
   background-size: calc(var(--width-per-note) * 4) 100%; // Highlight every 4 beats
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: calc(var(--scrollbar-width, 0px) * -1 + 2px);
+    width: calc(var(--scrollbar-width, 0px) - 2px);
+    height: 100%;
+  }
 }
 
 .rhythm-track {
   flex-grow: 1;
-  display: flex;
-  align-items: center;
   border-bottom: 1px solid #333;
   min-height: 60px;
 
   &:last-child {
     border-bottom: none;
-  }
-
-  label {
-    width: 80px;
-    padding: 10px;
-    background: #2a2a2a;
-    border-right: 2px solid #333;
-    font-size: 12px;
-    color: #ccc;
-    text-align: center;
-    flex-shrink: 0;
   }
 }
 

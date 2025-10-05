@@ -405,7 +405,7 @@ class Sequencer {
 
     if (/* !melodyKeys ||  */!pianoRoll) return;
 
-    section.style.setProperty('--scrollbar-height', `${section.offsetHeight - section.clientHeight}px`);
+    document.getElementById('app')!.style.setProperty('--scrollbar-width', `${section.offsetHeight - section.clientHeight}px`);
     section.scrollTop = 20 * (12 * 2 + 2); // 2 octaves + extra space
     section.addEventListener('scroll', (e) => {
       const target = e.target as HTMLElement;
