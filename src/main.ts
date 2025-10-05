@@ -639,28 +639,50 @@ class Sequencer {
   }
 
   private setupTrackScrolling() {
-    const controlPanel = document.querySelector('.control-panel');
-    if (!controlPanel) return;
+    const melodyTrackList = document.getElementById('melody-track-list');
+    if (!melodyTrackList) return;
 
-    // controlPanel.addEventListener('wheel', (e: Event) => {
-    //   const wheelEvent = e as WheelEvent;
-    //   e.preventDefault();
-    //   const direction = wheelEvent.deltaY > 0 ? 1 : -1;
-    //   this.switchToNextTrack(direction);
-    // });
+    melodyTrackList.addEventListener('wheel', (e: WheelEvent) => {
+      e.preventDefault();
+      const direction = e.deltaY > 0 ? 1 : -1;
+      this.switchToNextTrack(direction);
+    });
 
-    // controlPanel.addEventListener('pointermove', (e: Event) => {
-    //   const pointerEvent = e as PointerEvent;
-    //   const rect = controlPanel.getBoundingClientRect();
-    //   const y = pointerEvent.clientY - rect.top;
-    //   const centerY = rect.height / 2;
-    //   const distance = Math.abs(y - centerY);
+    let isPointerDown = false;
+    let beforeY = 0;
+    melodyTrackList.addEventListener('pointerdown', (e: PointerEvent) => {
+      if (e.button !== 0) return; // 左クリックのみ
+      isPointerDown = true;
+      beforeY = e.clientY;
+    });
 
-    //   if (distance > 50) {
-    //     const direction = y > centerY ? 1 : -1;
-    //     this.switchToNextTrack(direction);
-    //   }
-    // });
+    let captured = false;
+    melodyTrackList.addEventListener('pointermove', (e: PointerEvent) => {
+      if (!isPointerDown) return;
+      if (!captured) {
+        melodyTrackList.setPointerCapture(e.pointerId);
+        captured = true;
+      }
+      const y = e.clientY;
+      const distance = y - beforeY;
+
+      if (Math.abs(distance) > 40) {
+        const direction = distance > 0 ? 1 : -1;
+        this.switchToNextTrack(direction);
+        beforeY = y;
+      }
+    });
+
+    melodyTrackList.addEventListener('pointerup', (e: PointerEvent) => {
+      if (e.button !== 0) return; // 左クリックのみ
+      isPointerDown = false;
+      melodyTrackList.releasePointerCapture(e.pointerId);
+      captured = false;
+    });
+
+    melodyTrackList.addEventListener('pointerleave', () => {
+      isPointerDown = false;
+    });
   }
 
   private async setupLocalForage() {
@@ -712,7 +734,10 @@ class Sequencer {
 
   private switchToNextTrack(direction: number) {
     const trackCount = 4;
-    this.currentTrack = ((this.currentTrack + direction) + trackCount) % trackCount;
+    if (this.currentTrack + direction < 0 || this.currentTrack + direction >= trackCount) {
+      return;
+    }
+    this.currentTrack = this.currentTrack + direction;
 
     // Update UI
     document.querySelector('.track-item.active')?.classList.remove('active');
