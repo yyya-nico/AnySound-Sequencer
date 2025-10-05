@@ -473,17 +473,12 @@ class Sequencer {
         firstPointer.pitch = pointerMidiNote;
         isResizing = x > target.offsetLeft + target.offsetWidth - 10;
       }
-      if (firstPointer.notePos !== pointerNotePosition || firstPointer.pitch !== pointerMidiNote) {
+      if (!isResizing && (firstPointer.notePos !== pointerNotePosition || firstPointer.pitch !== pointerMidiNote)) {
         shouldMove = true;
       }
 
       // 範囲外の音程は無視
       if (pointerMidiNote < 21 || pointerMidiNote > 108) {
-        return;
-      }
-
-      // リサイズ中は何もしない
-      if (isResizing) {
         return;
       }
 
@@ -511,7 +506,7 @@ class Sequencer {
           this.moveNote(currentNote.id, newNotePos, newPitch);
         }
       } else {
-        const id = this.addNote(pointerMidiNote, pointerNotePosition, this.defaultNoteLength, false);
+        const id = this.addNote(pointerMidiNote, pointerNotePosition, this.defaultNoteLength);
         currentNote = trackNotes.find(n => n.id === id)!;
         firstCurrent.notePos = currentNote.start;
         firstCurrent.pitch = currentNote.pitch;
@@ -630,11 +625,13 @@ class Sequencer {
         const x = pointerEvent.clientX - rect.left;
 
         isResizable = x > rect.width - 10;
-        if (isResizable) {
-          pianoRoll.classList.add('note-resize');
-        } else {
-          pianoRoll.classList.remove('note-resize');
-        }
+      } else {
+        isResizable = false;
+      }
+      if (isResizable) {
+        pianoRoll.classList.add('note-resize');
+      } else {
+        pianoRoll.classList.remove('note-resize');
       }
       if (isResizing && currentNote) {
         const deltaX = pointerEvent.clientX - startX;
@@ -654,7 +651,6 @@ class Sequencer {
 
     document.addEventListener('pointerup', () => {
       if (isResizing && note) {
-        this.audioManager.playNote(note, this.bpm);
         this.defaultNoteLength = note.length;
       }
       note = null;
@@ -754,7 +750,7 @@ class Sequencer {
     this.notes.set(this.currentTrack.toString(), notes);
   }
 
-  private addNote(pitch: number, start: number, length: number, shouldPlay: boolean = true) {
+  private addNote(pitch: number, start: number, length: number) {
     const trackNotes = this.getCurrentTrackNotes();
     const noteId = `note-${Date.now()}-${Math.random()}`;
 
@@ -768,10 +764,6 @@ class Sequencer {
 
     trackNotes.push(note);
     this.setCurrentTrackNotes(trackNotes);
-
-    if (shouldPlay) {
-      this.audioManager.playNote(note, this.bpm);
-    }
 
     this.renderNote(note);
     return noteId;
@@ -887,7 +879,6 @@ class Sequencer {
     }
 
     await this.audioManager.resume();
-    this.audioManager.stopAllPreviews();
     this.isPlaying = true;
     this.currentBeat = 0;
     this.renderPlayButton();
@@ -936,6 +927,7 @@ class Sequencer {
     this.isPlaying = false;
     this.currentBeat = 0;
     this.renderPlayButton();
+    this.loopTimeout && clearTimeout(this.loopTimeout);
   }
   
   private renderPlayButton() {
