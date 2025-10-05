@@ -400,7 +400,7 @@ class Sequencer {
     });
 
     document.getElementById('melody-pitch-shift')?.addEventListener('input', (e) => {
-      const pitchShift = (e.target as HTMLInputElement).valueAsNumber;
+      const pitchShift = (e.target as HTMLInputElement).valueAsNumber || 0;
       this.audioManager.setMelodyPitchShift(pitchShift);
     });
 
@@ -781,7 +781,7 @@ class Sequencer {
     localForage.setItem('bpm', this.bpm);
     localForage.setItem('audioFiles', this.files);
 
-    const melodyPitchShift = (document.getElementById('melody-pitch-shift') as HTMLInputElement).valueAsNumber;
+    const melodyPitchShift = (document.getElementById('melody-pitch-shift') as HTMLInputElement).valueAsNumber || 0;
     localForage.setItem('melodyPitchShift', melodyPitchShift);
   }
 
