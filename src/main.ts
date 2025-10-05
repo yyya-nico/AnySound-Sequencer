@@ -399,7 +399,7 @@ class Sequencer {
       this.audioManager.setMelodySample(null);
     });
 
-    document.getElementById('melody-pitch-shift')?.addEventListener('change', (e) => {
+    document.getElementById('melody-pitch-shift')?.addEventListener('input', (e) => {
       const pitchShift = (e.target as HTMLInputElement).valueAsNumber;
       this.audioManager.setMelodyPitchShift(pitchShift);
     });
