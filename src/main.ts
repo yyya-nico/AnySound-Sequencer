@@ -593,6 +593,7 @@ class Sequencer {
 
   private setupNoteDragResize() {
     let note: Note | null = null;
+    let isResizable = false;
     let isResizing = false;
     let currentNote: HTMLElement | null = null;
     let startX = 0;
@@ -605,11 +606,8 @@ class Sequencer {
       const pointerEvent = e as PointerEvent;
       const target = e.target as HTMLElement;
       if (target.classList.contains('note')) {
-        const rect = target.getBoundingClientRect();
-        const x = pointerEvent.clientX - rect.left;
-
         // Check if clicking near the right edge for resizing
-        isResizing = x > rect.width - 10;
+        isResizing = isResizable;
         if (isResizing) {
           currentNote = target;
           startX = pointerEvent.clientX;
@@ -622,17 +620,25 @@ class Sequencer {
     document.addEventListener('pointermove', (e: Event) => {
       const pointerEvent = e as PointerEvent;
       const target = e.target as HTMLElement;
-      if (isResizing && currentNote) {
-        if (currentNote === target) {
-          pianoRoll.classList.add('note-resizing');
+      if (target.classList.contains('note')) {
+        const rect = target.getBoundingClientRect();
+        const x = pointerEvent.clientX - rect.left;
+
+        isResizable = x > rect.width - 10;
+        if (isResizable) {
+          pianoRoll.classList.add('note-resize');
+        } else {
+          pianoRoll.classList.remove('note-resize');
         }
+      }
+      if (isResizing && currentNote) {
         const deltaX = pointerEvent.clientX - startX;
         const newNoteValue = Math.max(0.5, Math.floor((originalWidth + deltaX) / 20) / 2); // 20px per 0.5 beat
         currentNote.style.setProperty('--length', newNoteValue.toString());
 
         // Update note data
         const noteId = currentNote.dataset.noteId!;
-        const trackNotes = this.getCurrentTrackNotes()
+        const trackNotes = this.getCurrentTrackNotes();
         note = trackNotes.find(n => n.id === noteId) || null;
         if (note) {
           note.length = newNoteValue;
@@ -648,7 +654,6 @@ class Sequencer {
       }
       note = null;
       isResizing = false;
-      pianoRoll.classList.remove('note-resizing');
       currentNote = null;
     });
   }
