@@ -1,0 +1,15 @@
+{
+  "title": "AnySound シーケンサー",
+  "play": "再生",
+  "stop": "停止",
+  "record": "録音",
+  "bpm": "BPM",
+  "melody_track": "メロディートラック",
+  "track": "トラック",
+  "melody_sound": "メロディー音色",
+  "beat_1_sound": "ビート 1 音色",
+  "beat_2_sound": "ビート 2 音色",
+  "use_sine_wave": "正弦波を使用",
+  "melody_volume": "メロディー音量",
+  "beat_volume": "ビート音量"
+}

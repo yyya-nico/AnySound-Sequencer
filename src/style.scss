@@ -1,0 +1,599 @@
+@charset "UTF-8";
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap");
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --accent: rgb(233, 233, 233);
+  --scrollbarHandle: rgba(255, 255, 255, 0.2);
+  --scrollbarHandleHover: rgba(255, 255, 255, 0.4);
+  --header-height: 56px;
+}
+
+html,
+body {
+  overscroll-behavior: contain;
+}
+
+html,
+html * {
+  scrollbar-color: var(--scrollbarHandle) transparent;
+  scrollbar-width: thin;
+}
+
+html::-webkit-scrollbar,
+html *::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+html::-webkit-scrollbar-track,
+html *::-webkit-scrollbar-track {
+  background: #ffffff1a;
+}
+
+html::-webkit-scrollbar-thumb,
+html *::-webkit-scrollbar-thumb {
+  background: var(--scrollbarHandle);
+}
+
+html::-webkit-scrollbar-thumb:hover,
+html *::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbarHandleHover);
+}
+
+html::-webkit-scrollbar-thumb:active,
+html *::-webkit-scrollbar-thumb:active {
+  background: var(--accent);
+}
+
+body {
+  margin: 0;
+  background-color: #1f1f1f;
+  color: #efefef;
+  font-family: "Noto Sans JP", sans-serif;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+h1 {
+  font-size: inherit;
+  font-weight: 400;
+}
+
+a:any-link {
+  color: #66ccff;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+ul {
+  padding-left: 25px;
+}
+
+dd {
+  margin-left: 40px;
+
+  + dt {
+    margin-top: 10px;
+  }
+}
+
+hr {
+  height: 1px;
+  margin: 0 10px;
+  border: 0;
+  background-color: #7f7f7f;
+}
+
+fieldset {
+  border-style: solid;
+  border-width: 2px;
+  border-color: #7f7f7f;
+  border-radius: 5px;
+  padding: 10px;
+}
+
+legend {
+  padding: 0 8px;
+}
+
+label {
+  display: block;
+}
+
+input[type="checkbox"] {
+  accent-color: #66ccff;
+}
+
+input[type="range"] {
+  height: 2px;
+  background-color: #e5e5e5;
+  appearance: none;
+
+  &::-webkit-slider-thumb {
+    width: 12px;
+    height: 12px;
+    background-color: #ffffff;
+    border-radius: 50%;
+    appearance: none;
+    cursor: pointer;
+  }
+
+  &::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border: 0;
+    background-color: #ffffff;
+    border-radius: 50%;
+    appearance: none;
+    cursor: pointer;
+  }
+}
+
+select,
+input[type="text"],
+input[type="date"],
+input[type="time"] {
+  padding: 8px 10px;
+  border: 1px solid gray;
+  border-radius: 5px;
+  color: lightgray;
+  background: #1f1f1f;
+  font-family: inherit;
+  color-scheme: dark;
+
+  &::placeholder {
+    color: #7f7f7f;
+  }
+
+  &:disabled {
+    background-color: #606060;
+    color: #7f7f7f;
+  }
+}
+
+button {
+  padding: 5px 13px;
+  border: 0;
+  border-radius: 5px;
+  background-color: #333333;
+  color: lightgray;
+  font-size: 1em;
+  font-family: inherit;
+  cursor: pointer;
+
+  &:disabled {
+    background-color: #111111;
+    color: #7f7f7f;
+    cursor: default;
+  }
+}
+
+details {
+  overflow: hidden;
+  border-radius: 10px;
+  background-color: #232323;
+  box-shadow: 0 0 8px 0 #000000;
+
+  summary {
+    padding: 10px;
+    background-color: #323232;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  p,
+  div,
+  details {
+    margin: 10px;
+  }
+}
+
+blockquote {
+  margin: 8px 5px;
+  border-left: 3px solid #333333;
+  padding-left: 8px;
+}
+
+header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  overflow: hidden;
+  height: var(--header-height);
+  padding: 15px 12.5px;
+  background: #111111;
+  font-size: 18px;
+  line-height: 26px;
+  white-space: nowrap;
+  word-break: break-all;
+  text-overflow: ellipsis;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  a:any-link {
+    color: inherit;
+  }
+
+  #language-select {
+    background: #1f1f1f;
+    border: 1px solid gray;
+    padding: 5px 10px;
+    border-radius: 5px;
+    color: lightgray;
+    font-family: inherit;
+    color-scheme: dark;
+    cursor: pointer;
+
+    &:disabled {
+      background-color: #606060;
+      color: #7f7f7f;
+      cursor: default;
+    }
+  }
+}
+
+// Sequencer specific styles
+#app {
+  display: flex;
+  height: calc(100vh - var(--header-height));
+  overflow: hidden;
+}
+
+.sequencer-container {
+  display: flex;
+  flex-direction: column;
+  background: #1a1a1a;
+  min-width: 0;
+  user-select: none;
+}
+
+.piano-roll-section {
+  overflow: auto;
+  height: 100%;
+  margin-bottom: calc(var(--scrollbar-height, 0px) * -1);
+  border-bottom: 2px solid #333;
+  background: #1e1e1e;
+}
+
+.piano-roll-grid {
+  position: relative;
+  width: calc(40px * 64); // 64 beats
+  height: calc(20px * 88); // 88 keys
+
+  &.note-dragging {
+    cursor: move;
+
+    .note {
+      cursor: inherit;
+      opacity: 0.6;
+    }
+  }
+
+  &.note-resizing {
+    cursor: ew-resize;
+
+    .note {
+      cursor: inherit;
+    }
+  }
+}
+
+.rhythm-section {
+  flex-basis: 200px;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.melody-keys {
+  width: 80px;
+  background: #2a2a2a;
+  border-right: 2px solid #333;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.rhythm-tracks {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.rhythm-track {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #333;
+  min-height: 60px;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  label {
+    width: 80px;
+    padding: 10px;
+    background: #2a2a2a;
+    border-right: 2px solid #333;
+    font-size: 12px;
+    color: #ccc;
+    text-align: center;
+    flex-shrink: 0;
+  }
+}
+
+.rhythm-grid {
+  display: grid;
+  grid-template-columns: repeat(64, calc(40px));
+  place-items: center;
+  background: #1e1e1e;
+  height: 100%;
+}
+
+.control-panel {
+  width: 250px;
+  background: #232323;
+  border-left: 2px solid #333;
+  padding: 20px;
+  overflow-y: auto;
+  flex-shrink: 0;
+
+  > div {
+    margin-bottom: 20px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+}
+
+.playback-controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+
+  button {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    font-size: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &#play-btn {
+      background: #4caf50;
+
+      &:hover {
+        background: #45a049;
+      }
+    }
+
+    &#stop-btn {
+      background: #f44336;
+
+      &:hover {
+        background: #da190b;
+      }
+    }
+
+    &#record-btn {
+      background: #ff9800;
+
+      &:hover {
+        background: #e68900;
+      }
+    }
+  }
+}
+
+.bpm-control {
+  text-align: center;
+
+  label {
+    margin-bottom: 10px;
+    color: #ccc;
+  }
+
+  #bpm-value {
+    font-weight: bold;
+    color: #66ccff;
+  }
+
+  input[type="range"] {
+    width: 100%;
+    margin-top: 10px;
+  }
+}
+
+.track-selector {
+  label {
+    margin-bottom: 10px;
+    color: #ccc;
+    font-weight: bold;
+  }
+}
+
+.track-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.track-item {
+  padding: 10px;
+  background: #333;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.2s;
+  text-align: center;
+  font-size: 14px;
+
+  &:hover {
+    background: #444;
+  }
+
+  &.active {
+    background: #66ccff;
+    color: #000;
+  }
+}
+
+.sound-selection {
+  .sound-group {
+    margin-bottom: 15px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    label {
+      margin-bottom: 8px;
+      color: #ccc;
+      font-size: 14px;
+    }
+
+    input[type="file"] {
+      width: 100%;
+      margin-bottom: 8px;
+      padding: 8px;
+      background: #333;
+      border: 1px solid #555;
+      border-radius: 3px;
+      color: #ccc;
+      font-size: 12px;
+
+      &::file-selector-button {
+        background: #555;
+        border: none;
+        color: #ccc;
+        padding: 5px 10px;
+        border-radius: 3px;
+        cursor: pointer;
+        margin-right: 10px;
+      }
+    }
+
+    button {
+      width: 100%;
+      padding: 8px;
+      font-size: 12px;
+      background: #444;
+
+      &:hover {
+        background: #555;
+      }
+    }
+  }
+}
+
+.volume-controls {
+  .volume-group {
+    margin-bottom: 15px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    label {
+      margin-bottom: 5px;
+      color: #ccc;
+      font-size: 14px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+    }
+  }
+}
+
+// Grid styles for piano roll and rhythm
+.grid {
+  background-image: linear-gradient(to right, #333 1px, transparent 1px),
+    linear-gradient(to bottom, #333 1px, transparent 1px),
+    linear-gradient(to right, #333 2px, transparent 1px),
+    linear-gradient(to bottom, #444 2px, transparent 1px);
+  background-size: 40px 20px, 40px 20px, calc(40px * 4) 20px,
+    40px calc(20px * 12);
+  background-position: 0 0, 0 0, 0 0, 0 20px;
+}
+
+.note {
+  position: absolute;
+  background: #66ccff;
+  border: 1px solid #4da6d9;
+  border-radius: 3px;
+  cursor: pointer;
+  min-width: 20px;
+  transition: box-shadow 0.2s ease;
+
+  &:hover {
+    background: #7dd3ff;
+  }
+
+  &.selected {
+    background: #ffcc66;
+    border-color: #e6b84d;
+  }
+}
+
+.beat {
+  width: 30px;
+  height: 30px;
+  background: #666;
+  border: 2px solid #444;
+  border-radius: 50%;
+  cursor: pointer;
+
+  &:hover {
+    background: #777;
+  }
+
+  &.active {
+    background: #ff6b6b;
+    border-color: #ff5252;
+  }
+}
+
+// Melody key styles
+.melody-key {
+  width: 100%;
+  height: 20px;
+  border-bottom: 1px solid #444;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 0 5px;
+  font-size: 10px;
+  color: #999;
+
+  &.white-key {
+    background: #f0f0f0;
+    color: #333;
+  }
+
+  &.black-key {
+    background: #333;
+    color: #ccc;
+  }
+
+  &:hover {
+    background: #66ccff;
+    color: #000;
+  }
+
+  &.active {
+    background: #ffcc66;
+    color: #000;
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "title": "AnySound Sequencer",
+  "play": "Play",
+  "stop": "Stop",
+  "record": "Record",
+  "bpm": "BPM",
+  "melody_track": "Melody Track",
+  "track": "Track",
+  "melody_sound": "Melody Sound",
+  "beat_1_sound": "Beat 1 Sound",
+  "beat_2_sound": "Beat 2 Sound",
+  "use_sine_wave": "Use Sine Wave",
+  "melody_volume": "Melody Volume",
+  "beat_volume": "Beat Volume"
+}

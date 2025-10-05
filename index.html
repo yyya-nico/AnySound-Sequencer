@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-i18n="title">AnySound Sequencer</title>
+    <link rel="canonical" href="https://yyya-nico.com/anysound-sequencer" />
+    <meta name="color-scheme" content="dark" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script type="module" src="/src/main.ts"></script>
+  </head>
+  <body>
+    <header>
+      <h1><a href="/anysound-sequencer" data-i18n="title">AnySound Sequencer</a></h1>
+      <select id="language-select">
+        <option value="en">English</option>
+        <option value="ja">日本語</option>
+      </select>
+    </header>
+    <main id="app">
+      <!-- 左側のメインシーケンサーエリア -->
+      <div class="sequencer-container">
+        <!-- ピアノロールエリア -->
+        <div class="piano-roll-section">
+          <div class="piano-roll-grid grid">
+            <!-- グリッドとノート配置エリア -->
+          </div>
+        </div>
+        
+        <!-- リズムセクション -->
+        <div class="rhythm-section">
+          <div class="rhythm-tracks">
+            <div class="rhythm-track" data-track="0">
+              <div class="rhythm-grid"></div>
+            </div>
+            <div class="rhythm-track" data-track="1">
+              <div class="rhythm-grid"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 右側のコントロールパネル -->
+      <div class="control-panel">
+        <!-- 再生コントロール -->
+        <div class="playback-controls">
+          <button id="play-btn" data-i18n="play" class="material-icons" title="Play">play_arrow</button>
+          <button id="stop-btn" data-i18n="stop" class="material-icons" title="Stop">stop</button>
+        </div>
+        
+        <!-- BPM設定 -->
+        <div class="bpm-control">
+          <label for="bpm-slider"><span data-i18n="bpm">BPM</span>: <span id="bpm-value">120</span></label>
+          <input type="range" id="bpm-slider" min="60" max="200" value="120">
+        </div>
+        
+        <!-- ピアノロール切り替え -->
+        <div class="track-selector">
+          <label data-i18n="melody_track">Melody Track</label>
+          <div class="track-list" id="melody-track-list">
+            <div class="track-item active" data-track="0"><span data-i18n="track">Track</span> 1</div>
+            <div class="track-item" data-track="1"><span data-i18n="track">Track</span> 2</div>
+            <div class="track-item" data-track="2"><span data-i18n="track">Track</span> 3</div>
+            <div class="track-item" data-track="3"><span data-i18n="track">Track</span> 4</div>
+          </div>
+        </div>
+        
+        <!-- 音色選択 -->
+        <div class="sound-selection">
+          <div class="sound-group">
+            <label data-i18n="melody_sound">Melody Sound</label>
+            <input type="file" id="melody-sound-input" accept="audio/*">
+            <button id="use-sine-melody" data-i18n="use_sine_wave">Use Sine Wave</button>
+          </div>
+          
+          <div class="sound-group">
+            <label><span data-i18n="beat_1_sound">Beat 1 Sound</span></label>
+            <input type="file" id="beat1-sound-input" accept="audio/*">
+            <button id="use-sine-beat1" data-i18n="use_sine_wave">Use Sine Wave</button>
+          </div>
+          
+          <div class="sound-group">
+            <label><span data-i18n="beat_2_sound">Beat 2 Sound</span></label>
+            <input type="file" id="beat2-sound-input" accept="audio/*">
+            <button id="use-sine-beat2" data-i18n="use_sine_wave">Use Sine Wave</button>
+          </div>
+        </div>
+        
+        <!-- ボリューム調整 -->
+        <div class="volume-controls">
+          <div class="volume-group">
+            <label for="melody-volume" data-i18n="melody_volume">Melody Volume</label>
+            <input type="range" id="melody-volume" min="0" max="100" value="70">
+          </div>
+          <div class="volume-group">
+            <label for="beat-volume" data-i18n="beat_volume">Beat Volume</label>
+            <input type="range" id="beat-volume" min="0" max="100" value="70">
+          </div>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>
