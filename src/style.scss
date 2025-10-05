@@ -140,6 +140,7 @@ input[type="range"] {
 
 select,
 input[type="text"],
+input[type="number"],
 input[type="date"],
 input[type="time"] {
   padding: 8px 10px;
@@ -169,6 +170,7 @@ button {
   font-size: 1em;
   font-family: inherit;
   cursor: pointer;
+  user-select: none;
 
   &:hover {
     background-color: #555555;
@@ -326,8 +328,8 @@ header {
 .piano-roll-section {
   overflow: auto;
   height: 100%;
-  margin-bottom: calc(var(--scrollbar-width, 0px) * -1);
-  border-bottom: 2px solid #333;
+  margin-block-end: calc(var(--scrollbar-width, 0px) * -1);
+  border-block-end: 2px solid #333;
   background: #1e1e1e;
 }
 
@@ -390,11 +392,11 @@ header {
 
 .rhythm-track {
   flex-grow: 1;
-  border-bottom: 1px solid #333;
+  border-inline-end: 1px solid #333;
   min-height: 60px;
 
   &:last-child {
-    border-bottom: none;
+    border-inline-end: none;
   }
 }
 
@@ -409,16 +411,13 @@ header {
   width: 250px;
   background: #232323;
   border-left: 2px solid #333;
-  padding: 20px;
+  padding-block: 5px;
+  padding-inline: 20px;
   overflow-y: auto;
   flex-shrink: 0;
 
   > div {
-    margin-bottom: 20px;
-
-    &:last-child {
-      margin-bottom: 0;
-    }
+    margin-block: 10px;
   }
 }
 
@@ -458,7 +457,7 @@ header {
   text-align: center;
 
   label {
-    margin-bottom: 10px;
+    margin-block: 10px;
     color: #ccc;
   }
 
@@ -475,7 +474,7 @@ header {
 
 .track-selector {
   label {
-    margin-bottom: 10px;
+    margin-block: 10px;
     color: #ccc;
     font-weight: bold;
   }
@@ -508,21 +507,37 @@ header {
 
 .sound-selection {
   .sound-group {
-    margin-bottom: 15px;
+    margin-block: 15px;
 
-    &:last-child {
-      margin-bottom: 0;
+    > * {
+      display: block;
+      margin-block: 8px;
     }
 
     label {
-      margin-bottom: 8px;
       color: #ccc;
       font-size: 14px;
+
+      &[for="melody-pitch-shift"] {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+
+        input {
+          width: 60px;
+          padding: 5px;
+          font-size: 12px;
+          text-align: right;
+          background: #333;
+          border: 1px solid #555;
+          border-radius: 3px;
+          color: #ccc;
+        }
+      }
     }
 
     input[type="file"] {
       width: 100%;
-      margin-bottom: 8px;
       padding: 8px;
       background: #333;
       border: 1px solid #555;
@@ -556,14 +571,10 @@ header {
 
 .volume-controls {
   .volume-group {
-    margin-bottom: 15px;
-
-    &:last-child {
-      margin-bottom: 0;
-    }
+    margin-block: 15px;
 
     label {
-      margin-bottom: 5px;
+      margin-block: 5px;
       color: #ccc;
       font-size: 14px;
     }
@@ -636,7 +647,7 @@ header {
 .melody-key {
   width: 100%;
   height: 20px;
-  border-bottom: 1px solid #444;
+  border-inline-end: 1px solid #444;
   cursor: pointer;
   display: flex;
   align-items: center;

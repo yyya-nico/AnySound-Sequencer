@@ -11,6 +11,7 @@
   "beat_1_sound": "ビート 1 音色",
   "beat_2_sound": "ビート 2 音色",
   "use_sine_wave": "正弦波を使用",
+  "pitch_shift": "ピッチシフト\n(ファイルのみ)",
   "melody_volume": "メロディー音量",
   "beat_volume": "ビート音量",
   "clear_all": "全消去",

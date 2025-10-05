@@ -34,7 +34,7 @@ function updateTranslations() {
       if (element.title) {
         element.title = i18next.t(key);
       } else {
-        element.textContent = i18next.t(key);
+        element.innerText = i18next.t(key);
       }
     }
   });
@@ -98,6 +98,7 @@ class AudioManager {
   private context: AudioContext;
   private masterGain: GainNode;
   private melodySamples: Map<number, AudioSample> = new Map();
+  private melodyPitchShift: number = 0;
   private beatSamples: Map<number, AudioSample> = new Map();
   private previewSources: Map<string, { source: AudioBufferSourceNode; gain: GainNode }> = new Map();
 
@@ -139,8 +140,8 @@ class AudioManager {
     return 440 * Math.pow(2, (midiNote - 69) / 12);
   }
 
-  private midiToPercentage(midiNote: number): number {
-    return Math.pow(2, (midiNote - 53) / 12); // F3 as reference
+  private midiToPercentage(midiNote: number, pitchShift: number = 0): number {
+    return Math.pow(2, (midiNote - 53 + pitchShift) / 12); // F3 as reference
   }
 
   async loadAudioFile(file: File): Promise<AudioBuffer> {
@@ -161,6 +162,10 @@ class AudioManager {
         this.melodySamples.set(note, { buffer: null, type: 'sine' });
       }
     }
+  }
+
+  setMelodyPitchShift(pitchShift: number) {
+    this.melodyPitchShift = pitchShift;
   }
 
   setBeatSample(track: number, file: File | null) {
@@ -210,7 +215,7 @@ class AudioManager {
       source.buffer = this.createSineWave(frequency, durationInSeconds);
     } else {
       source.buffer = sample.buffer;
-      source.playbackRate.value = this.midiToPercentage(note.pitch);
+      source.playbackRate.value = this.midiToPercentage(note.pitch, this.melodyPitchShift);
     }
 
     gain.gain.value = (note.velocity / 127) * 0.5;
@@ -244,7 +249,7 @@ class AudioManager {
       source.buffer = this.createSineWave(frequency, durationInSeconds);
     } else {
       source.buffer = sample.buffer;
-      source.playbackRate.value = this.midiToPercentage(note.pitch);
+      source.playbackRate.value = this.midiToPercentage(note.pitch, this.melodyPitchShift);
     }
 
     // フェードインで開始
@@ -374,6 +379,11 @@ class Sequencer {
       if (input) input.value = '';
     });
 
+    document.getElementById('melody-pitch-shift')?.addEventListener('change', (e) => {
+      const pitchShift = (e.target as HTMLInputElement).valueAsNumber;
+      this.audioManager.setMelodyPitchShift(pitchShift);
+    });
+
     document.getElementById('beat1-sound-input')?.addEventListener('change', (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       this.audioManager.setBeatSample(0, file || null);
@@ -408,7 +418,7 @@ class Sequencer {
     const section = document.querySelector('.piano-roll-section') as HTMLElement;
     const pianoRoll = document.querySelector('.piano-roll-grid') as HTMLElement;
 
-    if (/* !melodyKeys ||  */!pianoRoll) return;
+    if (!pianoRoll) return;
 
     document.getElementById('app')!.style.setProperty('--scrollbar-width', `${section.offsetHeight - section.clientHeight}px`);
     section.scrollTop = 20 * (12 * 2 + 2); // 2 octaves + extra space
@@ -417,37 +427,6 @@ class Sequencer {
       const scrollLeft = target.scrollLeft; 
       document.querySelector('.rhythm-section')!.scrollLeft = scrollLeft;
     });
-
-    // // Create melody keys (C1 to C8, bottom to top)
-    // for (let octave = 1; octave <= 8; octave++) {
-    //   const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-    //   notes.forEach((noteName, index) => {
-    //     const midiNote = (octave + 1) * 12 + index;
-    //     if (midiNote > 108) return; // C8 is 108
-
-    //     const keyElement = document.createElement('div');
-    //     keyElement.className = `melody-key ${noteName.includes('#') ? 'black-key' : 'white-key'}`;
-    //     keyElement.textContent = `${noteName}${octave}`;
-    //     keyElement.dataset.note = midiNote.toString();
-
-    //     keyElement.addEventListener('click', () => {
-    //       this.audioManager.playNote({
-    //         id: '',
-    //         pitch: midiNote,
-    //         start: 0,
-    //         value: 0.5,
-    //         velocity: 100
-    //       });
-    //     });
-
-    //     melodyKeys.prepend(keyElement);
-    //   });
-    // }
-
-    // // Create grid
-    // const grid = document.createElement('div');
-    // grid.className = 'grid';
-    // pianoRoll.appendChild(grid);
 
     // Add pointer listener for note creation
     const firstCurrent = { notePos: -1, pitch: -1 };
@@ -880,7 +859,6 @@ class Sequencer {
 
     await this.audioManager.resume();
     this.isPlaying = true;
-    this.currentBeat = 0;
     this.renderPlayButton();
 
     const playLoop = () => {
@@ -923,11 +901,15 @@ class Sequencer {
     playLoop();
   }
 
-  private stop() {
+  private pause() {
     this.isPlaying = false;
-    this.currentBeat = 0;
     this.renderPlayButton();
     this.loopTimeout && clearTimeout(this.loopTimeout);
+  }
+
+  private stop() {
+    this.pause();
+    this.currentBeat = 0;
   }
   
   private renderPlayButton() {
