@@ -170,10 +170,72 @@ button {
   font-family: inherit;
   cursor: pointer;
 
+  &:hover {
+    background-color: #555555;
+    color: white;
+  }
+
+  &:active {
+    background-color: #111111;
+    color: gray;
+  }
+
   &:disabled {
     background-color: #111111;
     color: #7f7f7f;
-    cursor: default;
+    cursor: not-allowed;
+  }
+
+  &.primary {
+    color: #202020;
+    background-color: #3785d7;
+
+    &:hover {
+      background-color: #8ac3ff;
+      color: #555555;
+    }
+
+    &:active {
+      background-color: #225a97;
+      color: #111111;
+    }
+
+    &:disabled {
+      background-color: #858c93;
+      color: #111111;
+    }
+  }
+
+  &.enable {
+    color: #47cb49;
+
+    &:hover {
+      color: #70de72;
+    }
+
+    &:active {
+      color: #2d822e;
+    }
+
+    &:disabled {
+      color: #8bae8b;
+    }
+  }
+
+  &.danger {
+    color: #ef5555;
+
+    &:hover {
+      color: #ff7676;
+    }
+
+    &:active {
+      color: #942727;
+    }
+
+    &:disabled {
+      color: #522121;
+    }
   }
 }
 
@@ -250,6 +312,10 @@ header {
 }
 
 .sequencer-container {
+  --width-per-note: 40px;
+  --height-per-note: 20px;
+  --grid-beats: 64; // 64 beats
+  --grid-keys: 88; // 88 keys
   display: flex;
   flex-direction: column;
   background: #1a1a1a;
@@ -267,8 +333,8 @@ header {
 
 .piano-roll-grid {
   position: relative;
-  width: calc(40px * 64); // 64 beats
-  height: calc(20px * 88); // 88 keys
+  width: calc(var(--width-per-note) * var(--grid-beats));
+  height: calc(var(--height-per-note) * var(--grid-keys));
 
   &.note-dragging {
     cursor: move;
@@ -306,7 +372,11 @@ header {
 .rhythm-tracks {
   display: flex;
   flex-direction: column;
+  width: fit-content;
   height: 100%;
+  background-color: #1e1e1e;
+  background-image: linear-gradient(to right, #333 2px, transparent 1px);
+  background-size: calc(var(--width-per-note) * 4) 100%; // Highlight every 4 beats
 }
 
 .rhythm-track {
@@ -334,9 +404,8 @@ header {
 
 .rhythm-grid {
   display: grid;
-  grid-template-columns: repeat(64, calc(40px));
+  grid-template-columns: repeat(var(--grid-beats), var(--width-per-note));
   place-items: center;
-  background: #1e1e1e;
   height: 100%;
 }
 
@@ -523,19 +592,29 @@ header {
     linear-gradient(to bottom, #333 1px, transparent 1px),
     linear-gradient(to right, #333 2px, transparent 1px),
     linear-gradient(to bottom, #444 2px, transparent 1px);
-  background-size: 40px 20px, 40px 20px, calc(40px * 4) 20px,
-    40px calc(20px * 12);
+  background-size: var(--width-per-note) var(--height-per-note),
+    var(--width-per-note) var(--height-per-note),
+    calc(var(--width-per-note) * 4) var(--height-per-note),
+    var(--width-per-note) calc(var(--height-per-note) * 12);
   background-position: 0 0, 0 0, 0 0, 0 20px;
 }
 
 .note {
+  display: flex;
+  align-items: center;
   position: absolute;
+  top: calc(var(--height-per-note) * (108 - var(--pitch)));
+  left: calc(var(--width-per-note) * var(--start));
   background: #66ccff;
   border: 1px solid #4da6d9;
   border-radius: 3px;
+  padding-inline: 4px;
   cursor: pointer;
+  width: calc(var(--width-per-note) * var(--length));
   min-width: 20px;
-  transition: box-shadow 0.2s ease;
+  height: 18px;
+  color: #000;
+  font-size: 14px;
 
   &:hover {
     background: #7dd3ff;
@@ -595,5 +674,15 @@ header {
   &.active {
     background: #ffcc66;
     color: #000;
+  }
+}
+
+.clear-button {
+  text-align: center;
+
+  button {
+    width: 100%;
+    padding: 10px;
+    font-size: 14px;
   }
 }

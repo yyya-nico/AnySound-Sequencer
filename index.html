@@ -51,7 +51,7 @@
         <!-- BPM設定 -->
         <div class="bpm-control">
           <label for="bpm-slider"><span data-i18n="bpm">BPM</span>: <span id="bpm-value">120</span></label>
-          <input type="range" id="bpm-slider" min="60" max="200" value="120">
+          <input type="range" id="bpm-slider" min="60" max="300" value="120">
         </div>
         
         <!-- ピアノロール切り替え -->
@@ -97,6 +97,10 @@
             <input type="range" id="beat-volume" min="0" max="100" value="70">
           </div>
         </div>
+
+        <!-- 全消去 -->
+        <div class="clear-button">
+          <button id="clear-btn" class="danger" data-i18n="clear_all">Clear All</button>
       </div>
     </main>
   </body>

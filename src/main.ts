@@ -309,6 +309,7 @@ class Sequencer {
   private isPlaying: boolean = false;
   private currentBeat: number = 0;
   private gridSize: number = 64; // 64 beats
+  private loopTimeout: number | null = null;
   private saveTimeout: number | null = null;
 
   constructor() {
@@ -389,6 +390,12 @@ class Sequencer {
       const input = document.getElementById('beat2-sound-input') as HTMLInputElement;
       if (input) input.value = '';
     });
+
+    document.getElementById('clear-btn')?.addEventListener('click', () => {
+      if (confirm(i18next.t('confirm_clear_all'))) {
+        this.clearAll();
+      }
+    });
   }
 
   private initializePianoRoll() {
@@ -442,6 +449,7 @@ class Sequencer {
     const firstPointer = { notePos: -1, pitch: -1 };
     let currentNote: Note | null = null;
     let currentPreviewId: string | null = null;
+    let beforePitch = -1;
     let isDragging = false;
     let isResizing = false;
     let shouldMove = false;
@@ -451,7 +459,7 @@ class Sequencer {
       const rect = pianoRoll.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
-      const pointerNotePosition = Math.floor(x / 40);
+      const pointerNotePosition = Math.floor(x / 20) / 2; // 20px per 0.5 beat
       const pointerNoteIndex = Math.floor(y / 20);
       const pointerMidiNote = 108 - pointerNoteIndex; // C8 at top
       const isPointerDown = e.type === 'pointerdown';
@@ -504,12 +512,15 @@ class Sequencer {
         firstCurrent.pitch = currentNote.pitch;
       }
 
+      if (currentNote.pitch === beforePitch) {
+        return;
+      }
+      beforePitch = currentNote.pitch;
+
       // 前の音を停止して新しい音を再生
       if (currentPreviewId) {
         this.audioManager.stopPreview(currentPreviewId);
       }
-
-      console.log(['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'][(pointerMidiNote - 12) % 12] + Math.floor(pointerMidiNote / 12 - 1));
       
       currentPreviewId = `preview-${Date.now()}`;
       this.audioManager.playNotePreview(currentNote, this.bpm, currentPreviewId);
@@ -527,6 +538,7 @@ class Sequencer {
         firstCurrent.notePos = -1;
         firstCurrent.pitch = -1;
       }
+      beforePitch = -1;
       isDragging = true;
       shouldMove = false;
       currentPreviewId = null;
@@ -615,9 +627,8 @@ class Sequencer {
           pianoRoll.classList.add('note-resizing');
         }
         const deltaX = pointerEvent.clientX - startX;
-        const newWidth = Math.max(20, originalWidth + deltaX);
-        const newNoteValue = Math.max(1, newWidth / 40);
-        currentNote.style.width = `${newWidth - 2}px`;
+        const newNoteValue = Math.max(0.5, Math.floor((originalWidth + deltaX) / 20) / 2); // 20px per 0.5 beat
+        currentNote.style.setProperty('--length', newNoteValue.toString());
 
         // Update note data
         const noteId = currentNote.dataset.noteId!;
@@ -625,6 +636,7 @@ class Sequencer {
         note = trackNotes.find(n => n.id === noteId) || null;
         if (note) {
           note.length = newNoteValue;
+          this.updateNoteMeta(currentNote, note);
         }
       }
     });
@@ -765,10 +777,7 @@ class Sequencer {
       // Update note element position
       const noteElement = document.querySelector(`[data-note-id="${noteId}"]`) as HTMLElement;
       if (noteElement) {
-        const y = (108 - note.pitch) * 20;
-        const x = note.start * 40;
-        noteElement.style.top = `${y}px`;
-        noteElement.style.left = `${x}px`;
+        this.updateNoteMeta(noteElement, note);
       }
     }
   }
@@ -781,6 +790,23 @@ class Sequencer {
     document.querySelector(`[data-note-id="${noteId}"]`)?.remove();
   }
 
+  private clearAll() {
+    this.notes.forEach((_, track) => {
+      this.notes.set(track, []);
+    });
+    this.beats = [];
+    this.bpm = 120;
+
+    // Clear UI
+    document.querySelectorAll('.note').forEach(note => note.remove());
+    document.querySelectorAll('.beat.active').forEach(beat => beat.classList.remove('active'));
+    const bpmSlider = document.getElementById('bpm-slider') as HTMLInputElement;
+    const bpmValue = document.getElementById('bpm-value');
+    if (bpmSlider) bpmSlider.value = this.bpm.toString();
+    if (bpmValue) bpmValue.textContent = this.bpm.toString();
+    this.saveData();
+  }
+
   private renderNote(note: Note) {
     const pianoRoll = document.querySelector('.piano-roll-grid');
     if (!pianoRoll) return;
@@ -788,17 +814,20 @@ class Sequencer {
     const noteElement = document.createElement('div');
     noteElement.className = 'note';
     noteElement.dataset.noteId = note.id;
-
-    const y = (108 - note.pitch) * 20;
-    const x = note.start * 40;
-    const width = note.length * 40 - 2;
-
-    noteElement.style.top = `${y}px`;
-    noteElement.style.left = `${x}px`;
-    noteElement.style.width = `${width}px`;
-    noteElement.style.height = '18px';
+    this.updateNoteMeta(noteElement, note);
 
     pianoRoll.appendChild(noteElement);
+  }
+
+  private updateNoteMeta(noteElement: HTMLElement, note: Note) {
+    const noteName = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'][note.pitch % 12];
+    const octave = Math.floor(note.pitch / 12) - 1;
+    noteElement.textContent = noteName + octave;
+    noteElement.title = `${noteName}${octave} (${note.pitch})\nStart: ${note.start} beat\nLength: ${note.length} beat`;
+
+    noteElement.style.setProperty('--pitch', note.pitch.toString());
+    noteElement.style.setProperty('--start', note.start.toString());
+    noteElement.style.setProperty('--length', note.length.toString());
   }
 
   private toggleBeat(track: number, position: number) {
@@ -843,14 +872,16 @@ class Sequencer {
   }
 
   private async play() {
-    if (this.isPlaying) return;
+    if (this.isPlaying) {
+      this.loopTimeout && clearTimeout(this.loopTimeout);
+    }
 
     await this.audioManager.resume();
     this.audioManager.stopAllPreviews();
     this.isPlaying = true;
     this.currentBeat = 0;
 
-    const beatDuration = 60 / this.bpm; // 4th note duration
+    const beatDuration = 60 / this.bpm / 2; // 8th note duration
 
     const playLoop = () => {
       if (!this.isPlaying) return;
@@ -871,9 +902,16 @@ class Sequencer {
         }
       });
 
-      this.currentBeat = (this.currentBeat + 1) % this.gridSize;
+      const endOfTrack = Math.max(16, Array.from(this.notes.values()).flat().map(n => n.start + n.length).reduce((a, b) => Math.max(a, b), 0));
 
-      setTimeout(playLoop, beatDuration * 1000);
+      this.currentBeat+= 0.5;
+
+      if (this.currentBeat >= endOfTrack) {
+        this.isPlaying = false;
+        return;
+      }
+
+      this.loopTimeout = setTimeout(playLoop, beatDuration * 1000);
     };
 
     playLoop();
