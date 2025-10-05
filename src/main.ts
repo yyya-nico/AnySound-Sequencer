@@ -395,7 +395,7 @@ class Sequencer {
         }
       });
 
-      document.getElementById(`${track}-sine-btn`)?.addEventListener('click', () => {
+      document.getElementById(`use-sine-${track}`)?.addEventListener('click', () => {
         this.files[track] = null;
         fileInput.value = '';
         fileText.dataset.i18n = 'select_file';
