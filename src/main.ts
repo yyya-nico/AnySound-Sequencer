@@ -996,7 +996,7 @@ class Sequencer {
         }
       });
 
-      const endOfTrack = Math.max(16, Array.from(this.notes.values()).flat().map(n => n.start + n.length).reduce((a, b) => Math.max(a, b), 0));
+      const endOfTrack = Array.from(this.notes.values()).flat().map(n => n.start + n.length).reduce((a, b) => Math.max(a, b), 0);
 
       this.currentBeat += 0.5;
 
