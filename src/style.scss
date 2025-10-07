@@ -470,8 +470,8 @@ header {
     content: "";
     position: absolute;
     top: 0;
-    right: calc(var(--scrollbar-width, 0px) * -1 + 2.5px);
-    width: calc(var(--scrollbar-width, 0px) - 2.5px);
+    right: calc(var(--scrollbar-width, 0px) * -1);
+    width: var(--scrollbar-width, 0px);
     height: 100%;
   }
 }
