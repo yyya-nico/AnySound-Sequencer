@@ -321,6 +321,7 @@ header {
 }
 
 .sequencer-container {
+  --sound-panel-width: 180px;
   --width-per-note: 40px;
   --height-per-note: 20px;
   --grid-beats: 64; // 64 beats
@@ -333,10 +334,10 @@ header {
 }
 
 .piano-roll-section {
+  display: flex;
   overflow: auto;
   height: 100%;
   margin-block-end: calc(var(--scrollbar-width, 0px) * -1);
-  border-block-end: 2px solid #333;
   background: #1e1e1e;
 
   @include touch-device {
@@ -344,7 +345,85 @@ header {
   }
 }
 
+.melody-sound {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 10px;
+  position: sticky;
+  top: 0;
+  width: var(--sound-panel-width);
+  padding: 10px;
+
+  input[type="file"] {
+    display: none;
+  }
+
+  .file-label {
+    display: grid;
+    place-items: center;
+    height: 100%;
+    background: #444c;
+    border-radius: 4px;
+    padding: 8px 12px;
+    color: #ccc;
+    font-size: 13px;
+    text-align: center;
+    cursor: pointer;
+    transition: background 0.2s ease;
+
+    span {
+      width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    &:hover {
+      background: #555;
+    }
+
+    &:active {
+      background: #333;
+    }
+  }
+
+  button {
+    padding: 6px 12px;
+    background: #333c;
+    font-size: 12px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .pitch-shift-label {
+    padding: 8px;
+    border-radius: 5px;
+    font-size: 12px;
+    color: #ccc;
+    text-align: center;
+    background: #2a2a2acc;
+
+    &[hidden] {
+      display: none;
+    }
+
+    span {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    input[type="number"] {
+      width: 60px;
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+  }
+}
+
 .piano-roll-grid {
+  flex-shrink: 0;
   position: relative;
   width: calc(var(--width-per-note) * var(--grid-beats));
   height: calc(var(--height-per-note) * var(--grid-keys));
@@ -368,22 +447,16 @@ header {
 }
 
 .rhythm-section {
-  flex-basis: 200px;
+  flex-basis: 140px;
+  flex-shrink: 0;
   overflow: auto;
-  // scrollbar-gutter: stable;
+  border-block-start: 1px solid #333;
   background: #1e1e1e;
+  // scrollbar-gutter: stable;
 
   @include touch-device {
     overflow: hidden;
   }
-}
-
-.melody-keys {
-  width: 80px;
-  background: #2a2a2a;
-  border-right: 2px solid #333;
-  overflow-y: auto;
-  flex-shrink: 0;
 }
 
 .rhythm-tracks {
@@ -392,26 +465,69 @@ header {
   position: relative;
   width: fit-content;
   height: 100%;
-  background-image: linear-gradient(to right, #333 2px, transparent 1px);
-  background-size: calc(var(--width-per-note) * 4) 100%; // Highlight every 4 beats
 
   &::after {
     content: "";
     position: absolute;
     top: 0;
-    right: calc(var(--scrollbar-width, 0px) * -1 + 2px);
-    width: calc(var(--scrollbar-width, 0px) - 2px);
+    right: calc(var(--scrollbar-width, 0px) * -1 + 2.5px);
+    width: calc(var(--scrollbar-width, 0px) - 2.5px);
     height: 100%;
   }
 }
 
 .rhythm-track {
+  display: flex;
   flex-grow: 1;
   border-inline-end: 1px solid #333;
-  min-height: 60px;
 
   &:last-child {
     border-inline-end: none;
+  }
+}
+
+// 音色選択エリア（リズムトラック左下）
+.beat1-sound,
+.beat2-sound {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 10px;
+  position: sticky;
+  top: 0;
+  width: var(--sound-panel-width);
+  padding: 10px;
+
+  input[type="file"] {
+    display: none;
+  }
+
+  .file-label {
+    display: grid;
+    place-items: center;
+    height: 40px;
+    background: #444c;
+    border-radius: 4px;
+    padding: 8px 12px;
+    color: #ccc;
+    font-size: 13px;
+    text-align: center;
+    cursor: pointer;
+    transition: background 0.2s ease;
+
+    span {
+      width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    &:hover {
+      background: #555;
+    }
+
+    &:active {
+      background: #333;
+    }
   }
 }
 
@@ -420,6 +536,8 @@ header {
   grid-template-columns: repeat(var(--grid-beats), var(--width-per-note));
   place-items: center;
   height: 100%;
+  background-image: linear-gradient(to right, #333 2px, transparent 1px);
+  background-size: calc(var(--width-per-note) * 4) 100%; // Highlight every 4 beats
 }
 
 .control-panel {
@@ -688,39 +806,6 @@ header {
   &.active {
     background: #ff6b6b;
     border-color: #ff5252;
-  }
-}
-
-// Melody key styles
-.melody-key {
-  width: 100%;
-  height: 20px;
-  border-inline-end: 1px solid #444;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  padding: 0 5px;
-  font-size: 10px;
-  color: #999;
-
-  &.white-key {
-    background: #f0f0f0;
-    color: #333;
-  }
-
-  &.black-key {
-    background: #333;
-    color: #ccc;
-  }
-
-  &:hover {
-    background: #66ccff;
-    color: #000;
-  }
-
-  &.active {
-    background: #ffcc66;
-    color: #000;
   }
 }
 

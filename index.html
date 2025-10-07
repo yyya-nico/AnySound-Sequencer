@@ -22,6 +22,17 @@
       <div class="sequencer-container">
         <!-- ピアノロールエリア -->
         <div class="piano-roll-section">
+          <div class="melody-sound">
+            <label class="file-label" for="melody-sound-input">
+              <input type="file" id="melody-sound-input" accept="audio/*">
+              <span class="file-text" data-i18n="select_sound_source_file">Select Sound Source File</span>
+            </label>
+            <button id="back-to-sine-melody" data-i18n="back_to_sine_wave" hidden>Back to Sine Wave</button>
+            <label class="pitch-shift-label" for="melody-pitch-shift" hidden>
+              <span data-i18n="pitch_shift">Pitch Shift</span>
+              <input type="number" id="melody-pitch-shift">
+            </label>
+          </div>
           <div class="piano-roll-grid grid">
             <!-- グリッドとノート配置エリア -->
           </div>
@@ -31,9 +42,23 @@
         <div class="rhythm-section">
           <div class="rhythm-tracks">
             <div class="rhythm-track" data-track="0">
+              <div class="beat1-sound">
+                <label class="file-label" for="beat1-sound-input">
+                  <input type="file" id="beat1-sound-input" accept="audio/*">
+                  <span class="file-text" data-i18n="select_sound_source_file">Select Sound Source File</span>
+                </label>
+                <button id="back-to-sine-beat1" data-i18n="back_to_sine_wave" hidden>Back to Sine Wave</button>
+              </div>
               <div class="rhythm-grid"></div>
             </div>
             <div class="rhythm-track" data-track="1">
+              <div class="beat2-sound">
+                <label class="file-label" for="beat2-sound-input">
+                  <input type="file" id="beat2-sound-input" accept="audio/*">
+                  <span class="file-text" data-i18n="select_sound_source_file">Select Sound Source File</span>
+                </label>
+                <button id="back-to-sine-beat2" data-i18n="back_to_sine_wave" hidden>Back to Sine Wave</button>
+              </div>
               <div class="rhythm-grid"></div>
             </div>
           </div>
@@ -62,40 +87,6 @@
             <div class="track-item" data-track="1"><span data-i18n="track">Track</span> 2</div>
             <div class="track-item" data-track="2"><span data-i18n="track">Track</span> 3</div>
             <div class="track-item" data-track="3"><span data-i18n="track">Track</span> 4</div>
-          </div>
-        </div>
-        
-        <!-- 音色選択 -->
-        <div class="sound-selection">
-          <div class="sound-group">
-            <label data-i18n="melody_sound">Melody Sound</label>
-            <label class="file-label" for="melody-sound-input">
-              <input type="file" id="melody-sound-input" accept="audio/*">
-              <span class="file-text" data-i18n="select_file">Select File</span>
-            </label>
-            <button id="use-sine-melody" data-i18n="use_sine_wave">Use Sine Wave</button>
-            <label for="melody-pitch-shift">
-              <span data-i18n="pitch_shift">Pitch Shift<br>(File Only)</span>
-              <input type="number" id="melody-pitch-shift">
-            </label>
-          </div>
-          
-          <div class="sound-group">
-            <label><span data-i18n="beat_1_sound">Beat 1 Sound</span></label>
-            <label class="file-label" for="beat1-sound-input">
-              <input type="file" id="beat1-sound-input" accept="audio/*">
-              <span class="file-text" data-i18n="select_file">Select File</span>
-            </label>
-            <button id="use-sine-beat1" data-i18n="use_sine_wave">Use Sine Wave</button>
-          </div>
-          
-          <div class="sound-group">
-            <label><span data-i18n="beat_2_sound">Beat 2 Sound</span></label>
-            <label class="file-label" for="beat2-sound-input">
-              <input type="file" id="beat2-sound-input" accept="audio/*">
-              <span class="file-text" data-i18n="select_file">Select File</span>
-            </label>
-            <button id="use-sine-beat2" data-i18n="use_sine_wave">Use Sine Wave</button>
           </div>
         </div>
         
