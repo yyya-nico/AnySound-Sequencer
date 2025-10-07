@@ -345,7 +345,9 @@ header {
   }
 }
 
-.melody-sound {
+.melody-sound,
+.beat1-sound,
+.beat2-sound {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -389,10 +391,6 @@ header {
   button {
     padding: 6px 12px;
     font-size: 12px;
-
-    &:last-child {
-      margin-bottom: 0;
-    }
   }
 
   .pitch-shift-label {
@@ -481,50 +479,6 @@ header {
 
   &:last-child {
     border-inline-end: none;
-  }
-}
-
-// 音色選択エリア（リズムトラック左下）
-.beat1-sound,
-.beat2-sound {
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  gap: 10px;
-  position: sticky;
-  top: 0;
-  width: var(--sound-panel-width);
-  padding: 10px;
-
-  input[type="file"] {
-    display: none;
-  }
-
-  .file-label {
-    display: grid;
-    place-items: center;
-    height: 100%;
-    background: #333;
-    border-radius: 4px;
-    padding: 8px 12px;
-    color: #ccc;
-    font-size: 13px;
-    text-align: center;
-    cursor: pointer;
-
-    span {
-      width: 100%;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    &:hover {
-      background: #555;
-    }
-
-    &:active {
-      background: #111;
-    }
   }
 }
 
