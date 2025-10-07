@@ -1,6 +1,12 @@
 @charset "UTF-8";
 @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap");
 
+@mixin touch-device {
+  @media (hover: none) and (pointer: coarse) {
+    @content;
+  }
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -332,6 +338,10 @@ header {
   margin-block-end: calc(var(--scrollbar-width, 0px) * -1);
   border-block-end: 2px solid #333;
   background: #1e1e1e;
+
+  @include touch-device {
+    overflow: hidden;
+  }
 }
 
 .piano-roll-grid {
@@ -362,6 +372,10 @@ header {
   overflow: auto;
   // scrollbar-gutter: stable;
   background: #1e1e1e;
+
+  @include touch-device {
+    overflow: hidden;
+  }
 }
 
 .melody-keys {
