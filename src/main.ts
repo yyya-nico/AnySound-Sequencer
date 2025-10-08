@@ -1042,14 +1042,14 @@ class Sequencer {
     playLoop();
   }
 
-  private pause() {
-    this.isPlaying = false;
-    this.renderPlayButton();
-    this.loopTimeout && clearTimeout(this.loopTimeout);
-    const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
-    sequencerContainer.classList.remove('playing');
-    sequencerContainer.classList.add('paused');
-  }
+  // private pause() {
+  //   this.isPlaying = false;
+  //   this.renderPlayButton();
+  //   this.loopTimeout && clearTimeout(this.loopTimeout);
+  //   const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
+  //   sequencerContainer.classList.remove('playing');
+  //   sequencerContainer.classList.add('paused');
+  // }
 
   private stop() {
     this.isPlaying = false;
