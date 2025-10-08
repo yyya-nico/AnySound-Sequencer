@@ -501,7 +501,7 @@ header {
   flex-shrink: 0;
 
   > div {
-    margin-block: 10px;
+    margin-block: 16px;
   }
 }
 
@@ -540,8 +540,12 @@ header {
 .bpm-control {
   text-align: center;
 
-  label {
+  > * {
+    display: block;
     margin-block: 10px;
+  }
+
+  label {
     color: #ccc;
   }
 
@@ -552,7 +556,19 @@ header {
 
   input[type="range"] {
     width: 100%;
-    margin-top: 10px;
+  }
+
+  .speed-control {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-block: 20px;
+
+    label {
+      color: #ccc;
+      font-size: 14px;
+    }
   }
 }
 

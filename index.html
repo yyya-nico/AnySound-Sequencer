@@ -77,6 +77,14 @@
         <div class="bpm-control">
           <label for="bpm-slider"><span data-i18n="bpm">BPM</span>: <span id="bpm-value">120</span></label>
           <input type="range" id="bpm-slider" min="60" max="300" value="120">
+          <div class="speed-control">
+            <label for="speed-select" data-i18n="speed">Speed</label>
+            <select id="speed-select">
+              <option value="0.5" data-i18n="half_speed">0.5x</option>
+              <option value="1" selected data-i18n="normal_speed">1x</option>
+              <option value="2" data-i18n="double_speed">2x</option>
+            </select>
+          </div>
         </div>
         
         <!-- ピアノロール切り替え -->

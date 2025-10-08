@@ -320,6 +320,7 @@ class Sequencer {
   };
   private currentTrack: number = 0;
   private bpm: number = 120;
+  private playbackSpeed: number = 1; // 0.5x, 1x, 2x
   private defaultNoteLength: number = 1;
   private isPlaying: boolean = false;
   private currentBeat: number = 0;
@@ -368,6 +369,10 @@ class Sequencer {
     bpmSlider?.addEventListener('input', (e) => {
       this.bpm = (e.target as HTMLInputElement).valueAsNumber;
       if (bpmValue) bpmValue.textContent = this.bpm.toString();
+    });
+    const speedSelect = document.getElementById('speed-select') as HTMLSelectElement;
+    speedSelect?.addEventListener('change', (e) => {
+      this.playbackSpeed = parseFloat((e.target as HTMLSelectElement).value);
     });
 
     // Track selector
@@ -524,7 +529,7 @@ class Sequencer {
       }
       
       currentPreviewId = `preview-${Date.now()}`;
-      this.audioManager.playNotePreview(currentNote, this.bpm, currentPreviewId);
+      this.audioManager.playNotePreview(currentNote, this.bpm * this.playbackSpeed, currentPreviewId);
     };
 
     pianoRoll.addEventListener('pointerdown', (e) => {
@@ -717,6 +722,7 @@ class Sequencer {
     const savedNotes = await localForage.getItem<{ [key: string]: Note[] }>('notes');
     const savedBeats = await localForage.getItem<Beat[]>('beats');
     const savedBpm = await localForage.getItem<number>('bpm');
+    const savedPlaybackSpeed = await localForage.getItem<number>('playbackSpeed');
     const savedAudioFiles = await localForage.getItem<Files>('audioFiles');
     const savedMelodyPitchShift = await localForage.getItem<number>('melodyPitchShift');
 
@@ -740,6 +746,12 @@ class Sequencer {
       const bpmValue = document.getElementById('bpm-value');
       if (bpmSlider) bpmSlider.value = this.bpm.toString();
       if (bpmValue) bpmValue.textContent = this.bpm.toString();
+    }
+
+    if (savedPlaybackSpeed) {
+      this.playbackSpeed = savedPlaybackSpeed;
+      const speedSelect = document.getElementById('speed-select') as HTMLSelectElement;
+      if (speedSelect) speedSelect.value = this.playbackSpeed.toString();
     }
 
     if (savedAudioFiles) {
@@ -790,6 +802,7 @@ class Sequencer {
     localForage.setItem('notes', notesToSave);
     localForage.setItem('beats', this.beats);
     localForage.setItem('bpm', this.bpm);
+    localForage.setItem('playbackSpeed', this.playbackSpeed);
     localForage.setItem('audioFiles', this.files);
 
     const melodyPitchShift = (document.getElementById('melody-pitch-shift') as HTMLInputElement).valueAsNumber;
@@ -867,6 +880,7 @@ class Sequencer {
     });
     this.beats = [];
     this.bpm = 120;
+    this.playbackSpeed = 1;
     this.files = {
       melody: null,
       beat1: null,
@@ -886,6 +900,8 @@ class Sequencer {
     const bpmValue = document.getElementById('bpm-value');
     if (bpmSlider) bpmSlider.value = this.bpm.toString();
     if (bpmValue) bpmValue.textContent = this.bpm.toString();
+    const speedSelect = document.getElementById('speed-select') as HTMLSelectElement;
+    if (speedSelect) speedSelect.value = this.playbackSpeed.toString();
     const loopToggle = document.getElementById('loop-toggle') as HTMLInputElement;
     if (loopToggle) loopToggle.checked = true;
     ['melody', 'beat1', 'beat2'].forEach(track => {
@@ -982,13 +998,13 @@ class Sequencer {
     const playLoop = () => {
       if (!this.isPlaying) return;
 
-      const beatDuration = 60 / this.bpm / 2; // 8th note duration
+      const beatDuration = 60 / (this.bpm * this.playbackSpeed) / 2; // 8th note duration
 
       // Play notes at current beat
       this.notes.forEach(trackNotes => {
         trackNotes.forEach(note => {
           if (note.start === this.currentBeat) {
-            this.audioManager.playNote(note, this.bpm);
+            this.audioManager.playNote(note, this.bpm * this.playbackSpeed);
           }
         });
       });
