@@ -9,6 +9,7 @@
   "half_speed": "0.5x",
   "normal_speed": "1x",
   "double_speed": "2x",
+  "quadruple_speed": "4x",
   "melody_track": "Melody Track",
   "track": "Track",
   "melody_sound": "Melody Sound",

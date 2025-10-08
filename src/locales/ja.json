@@ -9,6 +9,7 @@
   "half_speed": "0.5倍",
   "normal_speed": "1倍",
   "double_speed": "2倍",
+  "quadruple_speed": "4倍",
   "melody_track": "メロディートラック",
   "track": "トラック",
   "melody_sound": "メロディー音色",
