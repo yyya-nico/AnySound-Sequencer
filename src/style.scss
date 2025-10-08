@@ -322,7 +322,7 @@ header {
 
 .sequencer-container {
   --sound-panel-width: 180px;
-  --width-per-note: 40px;
+  --width-per-note: 40px; // 4th note
   --height-per-note: 20px;
   --grid-beats: 64; // 64 beats
   --grid-keys: 88; // 88 keys
@@ -439,6 +439,35 @@ header {
     .note {
       cursor: inherit;
     }
+  }
+}
+
+.playback-position {
+  --start-x: calc(var(--current-beat, 0) * var(--width-per-note));
+  --end-x: calc(var(--start-x) + var(--width-per-note) / 2);
+  position: absolute;
+  top: 0;
+  left: -1px;
+  z-index: 1;
+  width: 2px;
+  height: 100%;
+  background: #a11f1f;
+  transform: translateX(var(--start-x));
+
+  @at-root {
+    .sequencer-container.playing & {
+      animation: var(--beat-duration, 1s) playhead-move linear;
+    }
+
+    .sequencer-container.pause & {
+      animation-play-state: paused;
+    }
+  }
+}
+
+@keyframes playhead-move {
+  to {
+    transform: translateX(var(--end-x));
   }
 }
 

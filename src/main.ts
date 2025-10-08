@@ -1,7 +1,7 @@
 import localForage from 'localforage';
 import i18next from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
-import { filenameToName } from './utils';
+import { filenameToName, resetAnimation } from './utils';
 
 import en from './locales/en.json';
 import ja from './locales/ja.json';
@@ -994,11 +994,16 @@ class Sequencer {
     await this.audioManager.resume();
     this.isPlaying = true;
     this.renderPlayButton();
+    const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
+    sequencerContainer.classList.add('playing');
+    sequencerContainer.classList.remove('paused');
 
     const playLoop = () => {
       if (!this.isPlaying) return;
 
       const beatDuration = 60 / (this.bpm * this.playbackSpeed) / 2; // 8th note duration
+      sequencerContainer.style.setProperty('--beat-duration', `${beatDuration}s`);
+      sequencerContainer.style.setProperty('--current-beat', this.currentBeat.toString());
 
       // Play notes at current beat
       this.notes.forEach(trackNotes => {
@@ -1029,6 +1034,8 @@ class Sequencer {
         this.currentBeat = 0;
       }
 
+      resetAnimation(sequencerContainer, 'playing');
+
       this.loopTimeout = setTimeout(playLoop, beatDuration * 1000);
     };
 
@@ -1039,11 +1046,19 @@ class Sequencer {
     this.isPlaying = false;
     this.renderPlayButton();
     this.loopTimeout && clearTimeout(this.loopTimeout);
+    const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
+    sequencerContainer.classList.remove('playing');
+    sequencerContainer.classList.add('paused');
   }
 
   private stop() {
-    this.pause();
+    this.isPlaying = false;
+    this.renderPlayButton();
+    this.loopTimeout && clearTimeout(this.loopTimeout);
+    const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
+    sequencerContainer.classList.remove('playing', 'paused');
     this.currentBeat = 0;
+    sequencerContainer.style.setProperty('--current-beat', this.currentBeat.toString());
   }
   
   private renderPlayButton() {
