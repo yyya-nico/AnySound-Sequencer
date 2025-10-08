@@ -382,7 +382,6 @@ class Sequencer {
       const fileInput = document.getElementById(`${track}-sound-input`) as HTMLInputElement;
       const fileText = document.querySelector(`#${track}-sound-input + .file-text`) as HTMLElement;
       const sineButton = document.getElementById(`back-to-sine-${track}`) as HTMLButtonElement;
-      const pitchShiftLabel = sineButton.nextElementSibling;
       
       fileInput.addEventListener('change', () => {
         if (fileInput.files?.[0]) {
@@ -414,7 +413,6 @@ class Sequencer {
         sineButton.hidden = true;
         
         if (track === 'melody') {
-          if (pitchShiftLabel) (pitchShiftLabel as HTMLElement).hidden = true;
           this.audioManager.setMelodySample(null);
         } else if (track === 'beat1') {
           this.audioManager.setBeatSample(0, null);
@@ -423,6 +421,8 @@ class Sequencer {
         }
       });
     });
+    const pitchShiftLabel = document.querySelector('.pitch-shift-label') as HTMLElement;
+    pitchShiftLabel.hidden = true;
 
     document.getElementById('melody-pitch-shift')?.addEventListener('input', (e) => {
       const pitchShift = (e.target as HTMLInputElement).valueAsNumber || 0;
@@ -895,8 +895,12 @@ class Sequencer {
         const fileText = document.querySelector(`#${track}-sound-input + .file-text`) as HTMLElement;
         fileText.dataset.i18n = 'select_sound_source_file';
         fileText.textContent = i18next.t('select_sound_source_file');
+        const sineButton = document.getElementById(`back-to-sine-${track}`) as HTMLButtonElement;
+        if (sineButton) sineButton.hidden = true;
       }
     });
+    const pitchShiftLabel = document.querySelector('.pitch-shift-label') as HTMLElement;
+    if (pitchShiftLabel) pitchShiftLabel.hidden = true;
     const pitchShiftInput = document.getElementById('melody-pitch-shift') as HTMLInputElement;
     if (pitchShiftInput) pitchShiftInput.value = '';
     this.saveData();
