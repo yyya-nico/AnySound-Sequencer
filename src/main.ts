@@ -326,6 +326,7 @@ class Sequencer {
   private currentBeat: number = 0;
   private gridSize: number = 64; // 64 beats
   private loopTimeout: number | null = null;
+  private animationId: number | null = null;
   private saveTimeout: number | null = null;
 
   constructor() {
@@ -995,8 +996,29 @@ class Sequencer {
     this.isPlaying = true;
     this.renderPlayButton();
     const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
+    const rhythmSection = document.querySelector('.rhythm-section') as HTMLElement;
+    const playbackPosition = document.querySelector('.playback-position') as HTMLElement;
     sequencerContainer.classList.add('playing');
     sequencerContainer.classList.remove('paused');
+
+    let initial = true;
+    const autoScroll = () => {
+      const rhythmRect = rhythmSection.getBoundingClientRect();
+      const playbackRect = playbackPosition.getBoundingClientRect();
+      const rhythmCenter = rhythmRect.left + rhythmRect.width / 2;
+      const playbackCenter = playbackRect.left + playbackRect.width / 2;
+
+      const nearCenterThreshold = rhythmRect.width / 6;
+      if (initial || Math.abs(playbackCenter - rhythmCenter) < nearCenterThreshold) {
+        const scrollOffset = playbackCenter - rhythmCenter;
+        rhythmSection.scrollLeft += scrollOffset;
+        initial = false;
+      } else if (this.currentBeat === 0) {
+        rhythmSection.scrollLeft = 0;
+      }
+      this.animationId = requestAnimationFrame(autoScroll);
+    };
+    this.animationId = requestAnimationFrame(autoScroll);
 
     const playLoop = () => {
       if (!this.isPlaying) return;
@@ -1046,6 +1068,7 @@ class Sequencer {
   //   this.isPlaying = false;
   //   this.renderPlayButton();
   //   this.loopTimeout && clearTimeout(this.loopTimeout);
+  //   this.animationId && cancelAnimationFrame(this.animationId);
   //   const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
   //   sequencerContainer.classList.remove('playing');
   //   sequencerContainer.classList.add('paused');
@@ -1055,6 +1078,7 @@ class Sequencer {
     this.isPlaying = false;
     this.renderPlayButton();
     this.loopTimeout && clearTimeout(this.loopTimeout);
+    this.animationId && cancelAnimationFrame(this.animationId);
     const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
     sequencerContainer.classList.remove('playing', 'paused');
     this.currentBeat = 0;
