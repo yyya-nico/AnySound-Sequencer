@@ -318,6 +318,7 @@ header {
   display: flex;
   height: calc(100vh - var(--header-height));
   overflow: hidden;
+  user-select: none;
 }
 
 .sequencer-container {
@@ -339,6 +340,7 @@ header {
   height: 100%;
   margin-block-end: calc(var(--scrollbar-width, 0px) * -1);
   background: #1e1e1e;
+  touch-action: none;
 
   @include touch-device {
     overflow: hidden;
@@ -478,6 +480,7 @@ header {
   border-block-start: 1px solid #333;
   background: #1e1e1e;
   // scrollbar-gutter: stable;
+  touch-action: none;
 
   @include touch-device {
     overflow: hidden;
@@ -613,6 +616,7 @@ header {
   display: flex;
   flex-direction: column;
   gap: 5px;
+  touch-action: none;
 }
 
 .track-item {
