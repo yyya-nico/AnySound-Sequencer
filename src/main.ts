@@ -1,7 +1,7 @@
 import localForage from 'localforage';
 import i18next from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
-import { filenameToName, resetAnimation } from './utils';
+import { filenameToName, dispatchPointerPressEvent } from './utils';
 
 import en from './locales/en.json';
 import ja from './locales/ja.json';
@@ -323,11 +323,13 @@ class Sequencer {
   private playbackSpeed: number = 1; // 0.5x, 1x, 2x
   private defaultNoteLength: number = 1;
   private isPlaying: boolean = false;
-  private currentBeat: number = 0;
   private gridSize: number = 64; // 64 beats
   private loopTimeout: number | null = null;
   private animationId: number | null = null;
   private saveTimeout: number | null = null;
+  private lastBpmChangeTime: number = 0;
+  private lastBpmChangeBeat: number = 0;
+  private currentBeat: number = 0;
 
   constructor() {
     this.audioManager = new AudioManager();
@@ -368,12 +370,25 @@ class Sequencer {
     const bpmSlider = document.getElementById('bpm-slider') as HTMLInputElement;
     const bpmValue = document.getElementById('bpm-value');
     bpmSlider?.addEventListener('input', (e) => {
-      this.bpm = (e.target as HTMLInputElement).valueAsNumber;
+      const newBpm = (e.target as HTMLInputElement).valueAsNumber;
+      
+      // 再生中の場合、現在のビート位置を記録してからBPMを変更
+      if (this.isPlaying) {
+        this.updateBpmDuringPlayback();
+      }
+      this.bpm = newBpm;
+      
       if (bpmValue) bpmValue.textContent = this.bpm.toString();
     });
     const speedSelect = document.getElementById('speed-select') as HTMLSelectElement;
     speedSelect?.addEventListener('change', (e) => {
-      this.playbackSpeed = parseFloat((e.target as HTMLSelectElement).value);
+      const newPlaybackSpeed = parseFloat((e.target as HTMLSelectElement).value);
+      
+      // 再生中の場合、現在のビート位置を記録してから再生速度を変更
+      if (this.isPlaying) {
+        this.updateBpmDuringPlayback();
+      }
+      this.playbackSpeed = newPlaybackSpeed;
     });
 
     // Track selector
@@ -534,7 +549,7 @@ class Sequencer {
     };
 
     pianoRoll.addEventListener('pointerdown', (e) => {
-      if (e.button !== 0) return; // 左クリックのみ
+      if (!e.isPrimary || e.button !== 0) return; // 左クリックのみ
       const target = e.target as HTMLElement;
       const trackNotes = this.getCurrentTrackNotes();
       currentNote = trackNotes.find(note => note.id === target.dataset.noteId) || null;
@@ -566,12 +581,17 @@ class Sequencer {
       this.audioManager.stopAllPreviews();
     });
 
-    pianoRoll.addEventListener('dblclick', (e) => {
-      const target = e.target as HTMLElement;
+    const removeNoteByEvent = (e: MouseEvent | CustomEvent) => {
+      const target = (e?.detail?.originalTarget as HTMLElement) || (e.target as HTMLElement);
       const noteId = target.dataset.noteId || null;
       if (noteId) {
         this.removeNote(noteId);
       }
+    };
+    dispatchPointerPressEvent(pianoRoll);
+    pianoRoll.addEventListener('dblclick', removeNoteByEvent);
+    pianoRoll.addEventListener('pointerpress', (e) => {
+      removeNoteByEvent(e as CustomEvent);
     });
   }
 
@@ -631,11 +651,11 @@ class Sequencer {
         const rect = target.getBoundingClientRect();
         const x = pointerEvent.clientX - rect.left;
 
-        isResizable = x > rect.width - 5;
+        isResizable = x > rect.width - 10;
       } else {
         isResizable = false;
       }
-      if (isResizable || isResizing) {
+      if (isResizing) {
         pianoRoll.classList.add('note-resize');
       } else {
         pianoRoll.classList.remove('note-resize');
@@ -987,7 +1007,21 @@ class Sequencer {
     trackNotes.forEach(note => this.renderNote(note));
   }
 
-  private async play() {
+  private updateBpmDuringPlayback() {
+    if (!this.isPlaying) return;
+    
+    // 現在のビート位置を計算
+    const now = performance.now();
+    const elapsedSinceLastBpmChange = (now - this.lastBpmChangeTime) / 1000;
+    const beatsSinceLastBpmChange = elapsedSinceLastBpmChange * (this.bpm * this.playbackSpeed) / 60;
+    this.currentBeat = this.lastBpmChangeBeat + beatsSinceLastBpmChange;
+    
+    // 新しいBPMでの基準点を更新
+    this.lastBpmChangeTime = now;
+    this.lastBpmChangeBeat = this.currentBeat;
+  }
+
+  private async play(startPos: number = 0) {
     if (this.isPlaying) {
       this.loopTimeout && clearTimeout(this.loopTimeout);
     }
@@ -1002,7 +1036,23 @@ class Sequencer {
     sequencerContainer.classList.remove('paused');
 
     let initial = true;
-    const autoScroll = () => {
+    this.lastBpmChangeTime = performance.now();
+    this.lastBpmChangeBeat = startPos;
+    
+    const endOfTrack = Array.from(this.notes.values()).flat().map(n => n.start + n.length).reduce((a, b) => Math.max(a, b), 0);
+    const played = new Set<string>();
+    this.currentBeat = startPos;
+    
+    const playRendering = (timeStamp: number) => {
+      // 現在のビート位置を時間ベースで計算
+      const elapsedSinceLastBpmChange = (timeStamp - this.lastBpmChangeTime) / 1000;
+      const beatsSinceLastBpmChange = elapsedSinceLastBpmChange * (this.bpm * this.playbackSpeed) / 60;
+      this.currentBeat = this.lastBpmChangeBeat + beatsSinceLastBpmChange;
+      
+      // playbackPositionの位置を更新（1ビート = 40px）
+      const positionInPixels = this.currentBeat * 40;
+      playbackPosition.style.setProperty('--position', `${positionInPixels}px`);
+      
       const rhythmRect = rhythmSection.getBoundingClientRect();
       const playbackRect = playbackPosition.getBoundingClientRect();
       const rhythmCenter = rhythmRect.left + rhythmRect.width / 2;
@@ -1010,42 +1060,42 @@ class Sequencer {
 
       const nearCenterThreshold = rhythmRect.width / 6;
       if (initial || Math.abs(playbackCenter - rhythmCenter) < nearCenterThreshold) {
-        const scrollOffset = playbackCenter - rhythmCenter;
-        rhythmSection.scrollLeft += scrollOffset;
+        playbackPosition.scrollIntoView({ block: 'nearest', inline: 'center' });
         initial = false;
-      } else if (this.currentBeat === 0) {
-        rhythmSection.scrollLeft = 0;
+      } else if (this.currentBeat <= 0.1) {
+        rhythmSection.scrollTo({ left: 0 });
       }
-      this.animationId = requestAnimationFrame(autoScroll);
+      this.animationId = requestAnimationFrame(playRendering);
     };
-    this.animationId = requestAnimationFrame(autoScroll);
+    this.animationId = requestAnimationFrame(playRendering);
 
     const playLoop = () => {
       if (!this.isPlaying) return;
-
-      const beatDuration = 60 / (this.bpm * this.playbackSpeed) / 2; // 8th note duration
-      sequencerContainer.style.setProperty('--beat-duration', `${beatDuration}s`);
-      sequencerContainer.style.setProperty('--current-beat', this.currentBeat.toString());
+    
+      const now = performance.now();
+      
+      // 現在のビート位置を再計算
+      const elapsedSinceLastBpmChange = (now - this.lastBpmChangeTime) / 1000;
+      const beatsSinceLastBpmChange = elapsedSinceLastBpmChange * (this.bpm * this.playbackSpeed) / 60;
+      this.currentBeat = this.lastBpmChangeBeat + beatsSinceLastBpmChange;
 
       // Play notes at current beat
       this.notes.forEach(trackNotes => {
         trackNotes.forEach(note => {
-          if (note.start === this.currentBeat) {
+          if (note.start <= this.currentBeat && note.start + 0.1 > this.currentBeat && !played.has(note.id)) {
             this.audioManager.playNote(note, this.bpm * this.playbackSpeed);
+            played.add(note.id);
           }
         });
       });
 
       // Play beats at current beat
       this.beats.forEach(beat => {
-        if (beat.position === this.currentBeat) {
+        if (beat.position <= this.currentBeat && beat.position + 0.1 > this.currentBeat && !played.has(beat.id)) {
           this.audioManager.playBeat(beat);
+          played.add(beat.id);
         }
       });
-
-      const endOfTrack = Array.from(this.notes.values()).flat().map(n => n.start + n.length).reduce((a, b) => Math.max(a, b), 0);
-
-      this.currentBeat += 0.5;
 
       if (this.currentBeat >= endOfTrack) {
         const loopToggle = document.getElementById('loop-toggle') as HTMLInputElement;
@@ -1053,12 +1103,13 @@ class Sequencer {
           this.stop();
           return;
         }
+        this.lastBpmChangeTime = performance.now();
+        this.lastBpmChangeBeat = 0;
         this.currentBeat = 0;
+        played.clear();
       }
 
-      resetAnimation(sequencerContainer, 'playing');
-
-      this.loopTimeout = setTimeout(playLoop, beatDuration * 1000);
+      this.loopTimeout = setTimeout(playLoop, 1);
     };
 
     playLoop();
@@ -1081,8 +1132,12 @@ class Sequencer {
     this.animationId && cancelAnimationFrame(this.animationId);
     const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
     sequencerContainer.classList.remove('playing', 'paused');
-    this.currentBeat = 0;
-    sequencerContainer.style.setProperty('--current-beat', this.currentBeat.toString());
+    
+    // playbackPositionを先頭にリセット
+    const playbackPosition = document.querySelector('.playback-position') as HTMLElement;
+    if (playbackPosition) {
+      playbackPosition.style.removeProperty('--position');
+    }
   }
   
   private renderPlayButton() {

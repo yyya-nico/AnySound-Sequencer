@@ -22,7 +22,7 @@
 
 html,
 body {
-  overscroll-behavior: contain;
+  overscroll-behavior: none;
 }
 
 html,
@@ -58,12 +58,15 @@ html *::-webkit-scrollbar-thumb:active {
 }
 
 body {
+  height: 100vh;
+  height: 100dvh;
   margin: 0;
   background-color: #1f1f1f;
   color: #efefef;
   font-family: "Noto Sans JP", sans-serif;
   font-weight: 400;
   line-height: 1.6;
+  touch-action: manipulation;
 }
 
 h1 {
@@ -316,8 +319,9 @@ header {
 // Sequencer specific styles
 #app {
   display: flex;
-  height: calc(100vh - var(--header-height));
+  height: calc(100% - var(--header-height));
   overflow: hidden;
+  -webkit-user-select: none;
   user-select: none;
 }
 
@@ -331,7 +335,6 @@ header {
   flex-direction: column;
   background: #1a1a1a;
   min-width: 0;
-  user-select: none;
 }
 
 .piano-roll-section {
@@ -340,7 +343,6 @@ header {
   height: 100%;
   margin-block-end: calc(var(--scrollbar-width, 0px) * -1);
   background: #1e1e1e;
-  touch-action: none;
 
   @include touch-device {
     overflow: hidden;
@@ -445,8 +447,6 @@ header {
 }
 
 .playback-position {
-  --start-x: calc(var(--current-beat, 0) * var(--width-per-note));
-  --end-x: calc(var(--start-x) + var(--width-per-note) / 2);
   position: absolute;
   top: 0;
   left: -1px;
@@ -454,23 +454,7 @@ header {
   width: 2px;
   height: 100%;
   background: #a11f1f;
-  transform: translateX(var(--start-x));
-
-  @at-root {
-    .sequencer-container.playing & {
-      animation: var(--beat-duration, 1s) playhead-move linear;
-    }
-
-    .sequencer-container.pause & {
-      animation-play-state: paused;
-    }
-  }
-}
-
-@keyframes playhead-move {
-  to {
-    transform: translateX(var(--end-x));
-  }
+  transform: translateX(var(--position, 0px));
 }
 
 .rhythm-section {
@@ -480,7 +464,6 @@ header {
   border-block-start: 1px solid #333;
   background: #1e1e1e;
   // scrollbar-gutter: stable;
-  touch-action: none;
 
   @include touch-device {
     overflow: hidden;
@@ -616,7 +599,6 @@ header {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  touch-action: none;
 }
 
 .track-item {
@@ -682,6 +664,20 @@ header {
   height: 18px;
   color: #000;
   font-size: 14px;
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    --point-width: 10px;
+    right: calc(var(--point-width) / -2);
+    width: var(--point-width);
+    height: 100%;
+    cursor: ew-resize;
+    border-top-right-radius: 2px;
+    border-bottom-right-radius: 2px;
+    background: #ffffff3f;
+  }
 
   &:hover {
     background: #7dd3ff;
