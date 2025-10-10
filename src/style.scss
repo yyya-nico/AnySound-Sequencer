@@ -548,11 +548,19 @@ header {
         background: #45a049;
       }
 
+      &:active {
+        background: #246527;
+      }
+
       &.is-playing {
         background: #ff9800;
 
         &:hover {
           background: #fb8c00;
+        }
+
+        &:active {
+          background: #a85400;
         }
       }
     }
