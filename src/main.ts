@@ -329,6 +329,7 @@ class Sequencer {
   private saveTimeout: number | null = null;
   private lastBpmChangeTime: number = 0;
   private lastBpmChangeBeat: number = 0;
+  private initialBpm: number = 120;
   private currentBeat: number = 0;
   private pointerDowned: boolean = false;
   private autoScroll: boolean = true;
@@ -467,6 +468,20 @@ class Sequencer {
         this.clearAll();
       }
     });
+
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.setActionHandler('play', () => {
+        this.play();
+      });
+
+      navigator.mediaSession.setActionHandler('pause', () => {
+        this.pause();
+      });
+
+      navigator.mediaSession.setActionHandler('stop', () => {
+        this.stop();
+      });
+    }
   }
 
   private initializePianoRoll() {
@@ -1025,6 +1040,14 @@ class Sequencer {
     trackNotes.forEach(note => this.renderNote(note));
   }
 
+  private getEndOfTrack(): number {
+    return Array.from(this.notes.values()).flat().map(n => n.start + n.length).reduce((a, b) => Math.max(a, b), 0);
+  }
+
+  private positionToSec(beat: number): number {
+    return beat * 60 / (this.bpm * this.playbackSpeed);
+  }
+
   private updateBpmDuringPlayback() {
     if (!this.isPlaying) return;
     
@@ -1037,9 +1060,17 @@ class Sequencer {
     // 新しいBPMでの基準点を更新
     this.lastBpmChangeTime = now;
     this.lastBpmChangeBeat = this.currentBeat;
+
+    // Update Media Session position state
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.setPositionState({
+        duration: this.positionToSec(this.getEndOfTrack()),
+        playbackRate: (this.bpm * this.playbackSpeed) / this.initialBpm,
+      });
+    }
   }
 
-  private async play(startPos: number = 0) {
+  private async play() {
     if (this.isPlaying) {
       this.loopTimeout && clearTimeout(this.loopTimeout);
     }
@@ -1048,18 +1079,24 @@ class Sequencer {
     this.isPlaying = true;
     this.renderPlayButton();
     const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
-    const rhythmSection = document.querySelector('.rhythm-section') as HTMLElement;
     const playbackPosition = document.querySelector('.playback-position') as HTMLElement;
     sequencerContainer.classList.add('playing');
     sequencerContainer.classList.remove('paused');
 
     this.lastBpmChangeTime = performance.now();
-    this.lastBpmChangeBeat = startPos;
-    
-    const endOfTrack = Array.from(this.notes.values()).flat().map(n => n.start + n.length).reduce((a, b) => Math.max(a, b), 0);
+    this.lastBpmChangeBeat = this.currentBeat;    
+
+    // Update Media Session metadata
+    this.initialBpm = this.bpm * this.playbackSpeed;
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.playbackState = 'playing';
+      navigator.mediaSession.setPositionState({
+        duration: this.positionToSec(this.getEndOfTrack()),
+        position: this.positionToSec(this.currentBeat)
+      });
+    }
     const played = new Set<string>();
-    this.currentBeat = startPos;
-    
+
     const playRendering = (timeStamp: number) => {
       // 現在のビート位置を時間ベースで計算
       const elapsedSinceLastBpmChange = (timeStamp - this.lastBpmChangeTime) / 1000;
@@ -1074,7 +1111,6 @@ class Sequencer {
         playbackPosition.scrollIntoView({ block: 'nearest', inline: 'center' });
       } else if (this.currentBeat <= 0.2) {
         this.autoScroll = true;
-        rhythmSection.scrollTo({ left: 0 });
       }
       this.animationId = requestAnimationFrame(playRendering);
     };
@@ -1108,7 +1144,7 @@ class Sequencer {
         }
       });
 
-      if (this.currentBeat >= endOfTrack) {
+      if (this.currentBeat >= this.getEndOfTrack()) {
         const loopToggle = document.getElementById('loop-toggle') as HTMLInputElement;
         if (!loopToggle.checked) {
           this.stop();
@@ -1117,7 +1153,14 @@ class Sequencer {
         this.lastBpmChangeTime = performance.now();
         this.lastBpmChangeBeat = 0;
         this.currentBeat = 0;
+        this.initialBpm = this.bpm * this.playbackSpeed;
         played.clear();
+        if ('mediaSession' in navigator) {
+          navigator.mediaSession.setPositionState({
+            duration: this.positionToSec(this.getEndOfTrack()),
+            position: 0,
+          });
+        }
       }
 
       this.loopTimeout = setTimeout(playLoop, 1);
@@ -1126,28 +1169,35 @@ class Sequencer {
     playLoop();
   }
 
-  // private pause() {
-  //   this.isPlaying = false;
-  //   this.renderPlayButton();
-  //   this.loopTimeout && clearTimeout(this.loopTimeout);
-  //   this.animationId && cancelAnimationFrame(this.animationId);
-  //   const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
-  //   sequencerContainer.classList.remove('playing');
-  //   sequencerContainer.classList.add('paused');
-  // }
+  private pause() {
+    this.isPlaying = false;
+    this.renderPlayButton();
+    this.loopTimeout && clearTimeout(this.loopTimeout);
+    this.animationId && cancelAnimationFrame(this.animationId);
+    const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
+    sequencerContainer.classList.remove('playing');
+    sequencerContainer.classList.add('paused');
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.playbackState = 'paused';
+    }
+  }
 
   private stop() {
     this.isPlaying = false;
     this.renderPlayButton();
     this.loopTimeout && clearTimeout(this.loopTimeout);
     this.animationId && cancelAnimationFrame(this.animationId);
+    this.lastBpmChangeTime = performance.now();
+    this.lastBpmChangeBeat = 0;
+    this.currentBeat = 0;
     const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
-    sequencerContainer.classList.remove('playing', 'paused');
-    
-    // playbackPositionを先頭にリセット
+    const pianoRollSection = document.querySelector('.piano-roll-section') as HTMLElement;
     const playbackPosition = document.querySelector('.playback-position') as HTMLElement;
-    if (playbackPosition) {
-      playbackPosition.style.removeProperty('--position');
+    sequencerContainer.classList.remove('playing', 'paused');
+    playbackPosition.style.removeProperty('--position');
+    pianoRollSection.scrollTo({ left: 0 });
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.playbackState = 'none';
     }
   }
   
