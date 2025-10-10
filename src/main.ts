@@ -353,7 +353,7 @@ class Sequencer {
   private setupEventListeners() {
     // Playback controls
     document.getElementById('prev-btn')?.addEventListener('click', () => {
-      this.previous();
+      this.resetPlayback();
     });
 
     document.getElementById('play-btn')?.addEventListener('click', () => {
@@ -1095,13 +1095,15 @@ class Sequencer {
     }
   }
 
-  private previous() {
+  private resetPlayback() {
     this.lastBpmChangeTime = performance.now();
     this.lastBpmChangeBeat = 0;
     this.currentBeat = 0;
     this.playedNotes.clear();
     const pianoRollSection = document.querySelector('.piano-roll-section') as HTMLElement;
+    const playbackPosition = document.querySelector('.playback-position') as HTMLElement;
     pianoRollSection.scrollTo({ left: 0 });
+    playbackPosition.style.removeProperty('--position');
     if ('mediaSession' in navigator) {
       navigator.mediaSession.setPositionState({
         duration: this.positionToSec(this.getEndOfTrack()),
@@ -1189,7 +1191,7 @@ class Sequencer {
           this.stop();
           return;
         }
-        this.previous();
+        this.resetPlayback();
       }
 
       this.loopTimeout = setTimeout(playLoop, 1);
@@ -1216,11 +1218,9 @@ class Sequencer {
     this.renderPlayButton();
     this.loopTimeout && clearTimeout(this.loopTimeout);
     this.animationId && cancelAnimationFrame(this.animationId);
-    this.previous();
+    this.resetPlayback();
     const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
-    const playbackPosition = document.querySelector('.playback-position') as HTMLElement;
     sequencerContainer.classList.remove('playing', 'paused');
-    playbackPosition.style.removeProperty('--position');
     if ('mediaSession' in navigator) {
       navigator.mediaSession.playbackState = 'none';
     }
