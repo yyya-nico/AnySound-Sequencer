@@ -329,7 +329,6 @@ class Sequencer {
   private saveTimeout: number | null = null;
   private lastBpmChangeTime: number = 0;
   private lastBpmChangeBeat: number = 0;
-  private initialBpm: number = 120;
   private currentBeat: number = 0;
   private playedNotes: Set<string> = new Set();
   private pointerDowned: boolean = false;
@@ -1061,7 +1060,7 @@ class Sequencer {
     if ('mediaSession' in navigator) {
       navigator.mediaSession.setPositionState({
         duration: this.positionToSec(this.getEndOfTrack()),
-        playbackRate: (this.bpm * this.playbackSpeed) / this.initialBpm,
+        position: this.positionToSec(this.currentBeat)
       });
     }
   }
@@ -1070,7 +1069,6 @@ class Sequencer {
     this.lastBpmChangeTime = performance.now();
     this.lastBpmChangeBeat = 0;
     this.currentBeat = 0;
-    this.initialBpm = this.bpm * this.playbackSpeed;
     this.playedNotes.clear();
     if ('mediaSession' in navigator) {
       navigator.mediaSession.setPositionState({
@@ -1098,7 +1096,6 @@ class Sequencer {
     this.lastBpmChangeBeat = this.currentBeat;    
 
     // Update Media Session metadata
-    this.initialBpm = this.bpm * this.playbackSpeed;
     if ('mediaSession' in navigator) {
       navigator.mediaSession.playbackState = 'playing';
       navigator.mediaSession.setPositionState({
