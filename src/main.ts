@@ -365,12 +365,12 @@ class Sequencer {
     });
 
     document.addEventListener('pointerdown', (e) => {
-      if (e.button !== 0) return; // 左クリックのみ
+      if (!e.isPrimary) return;
       window.clearTimeout(this.saveTimeout!);
     });
 
     document.addEventListener('pointerup', (e) => {
-      if (e.button !== 0) return; // 左クリックのみ
+      if (!e.isPrimary) return; // 左クリックのみ
       this.saveTimeout = window.setTimeout(() => this.saveData(), 1000);
     });
 
@@ -382,6 +382,24 @@ class Sequencer {
       if (!e.isPrimary) return;
       this.pointerDowned = false;
     });
+    sequencerContainer.addEventListener('touchstart', (e) => { // 複数指で拡大縮小が出来てしまうのを防ぐ
+      if (e.touches.length > 1) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+    // sequencerContainer.addEventListener('touchmove', (e) => {
+    //   if (e.touches.length === 1) { // 1本目の指は無視
+    //     e.preventDefault();
+    //   }
+    // }, { passive: false });
+    let lastTouch = 0;
+    sequencerContainer.addEventListener('touchend', (e) => { // ダブルタップズームを防ぐ
+      const now = window.performance.now();
+      if (now - lastTouch <= 500) {
+        e.preventDefault();
+      }
+      lastTouch = now;
+    }, { passive: false });
 
     // BPM control
     const bpmSlider = document.getElementById('bpm-slider') as HTMLInputElement;
@@ -580,7 +598,7 @@ class Sequencer {
     };
 
     pianoRoll.addEventListener('pointerdown', (e) => {
-      if (!e.isPrimary || e.button !== 0) return; // 左クリックのみ
+      if (!e.isPrimary) return; // 左クリックのみ
       const target = e.target as HTMLElement;
       const trackNotes = this.getCurrentTrackNotes();
       currentNote = trackNotes.find(note => note.id === target.dataset.noteId) || null;
@@ -599,12 +617,14 @@ class Sequencer {
     });
 
     pianoRoll.addEventListener('pointermove', (e) => {
+      if (!e.isPrimary) return; // 左クリックのみ
       if (isDragging) {
         handlePointerOperation(e);
       }
     });
 
-    document.addEventListener('pointerup', () => {
+    document.addEventListener('pointerup', (e) => {
+      if (!e.isPrimary) return; // 左クリックのみ
       if (!isDragging) {
         return;
       }
@@ -733,7 +753,7 @@ class Sequencer {
     let isPointerDown = false;
     let beforeY = 0;
     melodyTrackList.addEventListener('pointerdown', (e: PointerEvent) => {
-      if (e.button !== 0) return; // 左クリックのみ
+      if (!e.isPrimary) return; // 左クリックのみ
       isPointerDown = true;
       beforeY = e.clientY;
     });
@@ -756,7 +776,7 @@ class Sequencer {
     });
 
     melodyTrackList.addEventListener('pointerup', (e: PointerEvent) => {
-      if (e.button !== 0) return; // 左クリックのみ
+      if (!e.isPrimary) return; // 左クリックのみ
       isPointerDown = false;
       melodyTrackList.releasePointerCapture(e.pointerId);
       captured = false;

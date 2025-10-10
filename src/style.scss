@@ -347,10 +347,6 @@ header {
   margin-block-end: calc(var(--scrollbar-width, 0px) * -1);
   background: #1e1e1e;
 
-  @include touch-device {
-    overflow: hidden;
-  }
-
   &.notify {
     &::after {
       animation: notify 1s 1s ease-out backwards;
@@ -544,10 +540,6 @@ header {
   border-block-start: 1px solid #333;
   background: #1e1e1e;
   // scrollbar-gutter: stable;
-
-  @include touch-device {
-    overflow: hidden;
-  }
 }
 
 .rhythm-tracks {
