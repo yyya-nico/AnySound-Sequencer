@@ -28,7 +28,7 @@ const dispatchPointerPressEvent = (elem: HTMLElement) => {
           originalTarget: targetCached
         }
       }));
-    }, 500);
+    }, 1000);
   };
 
   const onPointerMove = (e: PointerEvent) => {
