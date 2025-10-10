@@ -480,7 +480,7 @@ class Sequencer {
       const noteId = `preview-pitch-shift-${Date.now()}`
       const note: Note = {
         id: noteId,
-        pitch: 60 + pitchShift, // C4にピッチシフトを反映
+        pitch: 60, // C4にピッチシフトが反映される
         start: 0,
         length: this.defaultNoteLength,
         velocity: 100
