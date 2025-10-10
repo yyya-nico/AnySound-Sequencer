@@ -318,7 +318,10 @@ header {
 
 // Sequencer specific styles
 #app {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr) auto;
+  width: 100%;
   height: calc(100% - var(--header-height));
   overflow: hidden;
   -webkit-user-select: none;
@@ -331,10 +334,10 @@ header {
   --height-per-note: 20px;
   --grid-beats: 64; // 64 beats
   --grid-keys: 88; // 88 keys
+  grid-area: 1 / 1 / 2 / 3;
   display: flex;
   flex-direction: column;
   background: #1a1a1a;
-  min-width: 0;
 }
 
 .piano-roll-section {
@@ -346,6 +349,36 @@ header {
 
   @include touch-device {
     overflow: hidden;
+  }
+
+  &.notify {
+    &::after {
+      animation: notify 1s 1s ease-out backwards;
+    }
+  }
+
+  &::after {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    position: sticky;
+    top: 50%;
+    right: 50%;
+    opacity: 0;
+    translate: 50% -50%;
+    width: 200px;
+    height: 200px;
+    background-color: #0000007f;
+    font-size: 78px;
+    font-weight: 300;
+    content: attr(data-track);
+    pointer-events: none;
+  }
+}
+
+@keyframes notify {
+  0% {
+    opacity: 1;
   }
 }
 
@@ -427,6 +460,7 @@ header {
   position: relative;
   width: calc(var(--width-per-note) * var(--grid-beats));
   height: calc(var(--height-per-note) * var(--grid-keys));
+  margin-inline-end: -100px;
 
   &.note-dragging {
     cursor: move;
@@ -455,6 +489,51 @@ header {
   height: 100%;
   background: #a11f1f;
   transform: translateX(var(--position, 0px));
+}
+
+#track-selector {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  align-self: flex-start;
+  position: sticky;
+  top: 50%;
+  right: 0;
+  translate: 0 -50%;
+  width: 100px;
+  margin-inline-end: calc(-200px * 1.5);
+  text-align: center;
+
+  &:hover {
+    > * {
+      animation: blink 1s ease-in-out infinite alternate;
+
+      &:nth-child(2),
+      &:nth-child(4) {
+        animation-delay: 0.25s;
+      }
+
+      &:nth-child(1),
+      &:nth-child(5) {
+        animation-delay: 0.75s;
+      }
+    }
+  }
+
+  label {
+    font-size: 12px;
+  }
+
+  span {
+    font-size: 36px;
+    margin-block: -4px;
+  }
+}
+
+@keyframes blink {
+  100% {
+    opacity: 0.3;
+  }
 }
 
 .rhythm-section {
@@ -507,20 +586,18 @@ header {
 }
 
 .control-panel {
-  width: 250px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  grid-column: 1 / -1;
   background: #232323;
-  border-left: 2px solid #333;
+  border-block-start: 2px solid #333;
   padding-block: 5px;
   padding-inline: 20px;
-  overflow-y: auto;
-  flex-shrink: 0;
-
-  > div {
-    margin-block: 16px;
-  }
 }
 
 .playback-controls {
+  grid-area: 1 / 2 / 3 / 3;
   display: flex;
   gap: 10px;
   align-items: center;
@@ -568,6 +645,7 @@ header {
 }
 
 .bpm-control {
+  grid-area: 1 / 1;
   text-align: center;
 
   > * {
@@ -602,38 +680,6 @@ header {
   }
 }
 
-.track-selector {
-  label {
-    margin-block: 10px;
-    color: #ccc;
-    font-weight: bold;
-  }
-}
-
-.track-list {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.track-item {
-  padding: 10px;
-  background: #333;
-  border-radius: 5px;
-  cursor: pointer;
-  text-align: center;
-  font-size: 14px;
-
-  &:hover {
-    background: #555;
-  }
-
-  &.active {
-    background: #66ccff;
-    color: #000;
-  }
-}
-
 .volume-controls {
   .volume-group {
     margin-block: 15px;
@@ -647,6 +693,17 @@ header {
     input[type="range"] {
       width: 100%;
     }
+  }
+}
+
+.clear-button {
+  grid-area: 2 / 3;
+  text-align: center;
+
+  button {
+    width: 100%;
+    padding: 10px;
+    font-size: 14px;
   }
 }
 
@@ -719,15 +776,5 @@ header {
   &.active {
     background: #ff6b6b;
     border-color: #ff5252;
-  }
-}
-
-.clear-button {
-  text-align: center;
-
-  button {
-    width: 100%;
-    padding: 10px;
-    font-size: 14px;
   }
 }

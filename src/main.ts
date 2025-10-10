@@ -1,7 +1,7 @@
 import localForage from 'localforage';
 import i18next from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
-import { filenameToName, dispatchPointerPressEvent } from './utils';
+import { filenameToName, dispatchPointerPressEvent, resetAnimation } from './utils';
 
 import en from './locales/en.json';
 import ja from './locales/ja.json';
@@ -409,13 +409,6 @@ class Sequencer {
       this.playbackSpeed = newPlaybackSpeed;
     });
 
-    // Track selector
-    document.querySelectorAll('.track-item').forEach((item, index) => {
-      item.addEventListener('click', () => {
-        this.switchTrack(index);
-      });
-    });
-
     // Audio file inputs
     const pitchShiftLabel = document.querySelector('.pitch-shift-label') as HTMLElement;
     ['melody', 'beat1', 'beat2'].forEach(track => {
@@ -504,6 +497,10 @@ class Sequencer {
       const target = e.target as HTMLElement;
       const scrollLeft = target.scrollLeft;
       document.querySelector('.rhythm-section')!.scrollTo({ left: scrollLeft });
+    });
+
+    section.addEventListener('animationend', () => {
+      section.classList.remove('notify');
     });
 
     // Add pointer listener for note creation
@@ -725,7 +722,7 @@ class Sequencer {
   }
 
   private setupTrackScrolling() {
-    const melodyTrackList = document.getElementById('melody-track-list');
+    const melodyTrackList = document.getElementById('track-selector');
     if (!melodyTrackList) return;
 
     melodyTrackList.addEventListener('wheel', (e: WheelEvent) => {
@@ -876,8 +873,11 @@ class Sequencer {
     this.currentTrack = this.currentTrack + direction;
 
     // Update UI
-    document.querySelector('.track-item.active')?.classList.remove('active');
-    document.querySelector(`.track-item[data-track="${this.currentTrack}"]`)?.classList.add('active');
+    const pianoRollSection = document.querySelector('.piano-roll-section') as HTMLElement;
+    if (pianoRollSection) {
+      pianoRollSection.dataset.track = (this.currentTrack + 1).toString();
+      resetAnimation(pianoRollSection, 'notify');
+    }
 
     this.renderCurrentTrack();
   }
@@ -951,8 +951,8 @@ class Sequencer {
     this.audioManager.setBeatSample(1, null);
 
     // Clear UI
-    document.querySelector('.track-item.active')?.classList.remove('active');
-    document.querySelector('.track-item[data-track="0"]')?.classList.add('active');
+    const pianoRollSection = document.querySelector('.piano-roll-section') as HTMLElement;
+    if (pianoRollSection) pianoRollSection.dataset.track = '1'; 
     document.querySelectorAll('.note').forEach(note => note.remove());
     document.querySelectorAll('.beat.active').forEach(beat => beat.classList.remove('active'));
     const bpmSlider = document.getElementById('bpm-slider') as HTMLInputElement;
@@ -1025,15 +1025,6 @@ class Sequencer {
       document.querySelector(`[data-track="${track}"] [data-position="${position}"]`)?.classList.add('active');
       this.audioManager.playBeat(beat);
     }
-  }
-
-  private switchTrack(trackIndex: number) {
-    // Update active track
-    document.querySelector('.track-item.active')?.classList.remove('active');
-    document.querySelector(`.track-item[data-track="${trackIndex}"]`)?.classList.add('active');
-
-    this.currentTrack = trackIndex;
-    this.renderCurrentTrack();
   }
 
   private renderCurrentTrack() {

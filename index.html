@@ -18,7 +18,7 @@
       </select>
     </header>
     <main id="app">
-      <!-- 左側のメインシーケンサーエリア -->
+      <!-- 上側のメインシーケンサーエリア -->
       <div class="sequencer-container">
         <!-- ピアノロールエリア -->
         <div class="piano-roll-section">
@@ -36,6 +36,13 @@
           <div class="piano-roll-grid grid">
             <div class="playback-position"></div>
             <!-- グリッドとノート配置エリア -->
+          </div>
+          <div id="track-selector">
+            <span class="material-icons">keyboard_arrow_up</span>
+            <span class="material-icons">keyboard_arrow_up</span>
+            <label data-i18n="wheel_or_swipe_to_select_track">Wheel or Swipe to Select Track</label>
+            <span class="material-icons">keyboard_arrow_down</span>
+            <span class="material-icons">keyboard_arrow_down</span>
           </div>
         </div>
         
@@ -66,7 +73,7 @@
         </div>
       </div>
       
-      <!-- 右側のコントロールパネル -->
+      <!-- 下側のコントロールパネル -->
       <div class="control-panel">
         <!-- 再生コントロール -->
         <div class="playback-controls">
@@ -87,17 +94,6 @@
               <option value="2" data-i18n="double_speed">2x</option>
               <option value="4" data-i18n="quadruple_speed">4x</option>
             </select>
-          </div>
-        </div>
-        
-        <!-- ピアノロール切り替え -->
-        <div class="track-selector">
-          <label data-i18n="melody_track">Melody Track</label>
-          <div class="track-list" id="melody-track-list">
-            <div class="track-item active" data-track="0"><span data-i18n="track">Track</span> 1</div>
-            <div class="track-item" data-track="1"><span data-i18n="track">Track</span> 2</div>
-            <div class="track-item" data-track="2"><span data-i18n="track">Track</span> 3</div>
-            <div class="track-item" data-track="3"><span data-i18n="track">Track</span> 4</div>
           </div>
         </div>
         
