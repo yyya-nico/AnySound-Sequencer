@@ -330,6 +330,8 @@ class Sequencer {
   private lastBpmChangeTime: number = 0;
   private lastBpmChangeBeat: number = 0;
   private currentBeat: number = 0;
+  private pointerDowned: boolean = false;
+  private autoScroll: boolean = true;
 
   constructor() {
     this.audioManager = new AudioManager();
@@ -362,8 +364,18 @@ class Sequencer {
       window.clearTimeout(this.saveTimeout!);
     });
 
-    document.addEventListener('pointerup', () => {
+    document.addEventListener('pointerup', (e) => {
+      if (e.button !== 0) return; // 左クリックのみ
       this.saveTimeout = window.setTimeout(() => this.saveData(), 1000);
+    });
+
+    const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
+    sequencerContainer.addEventListener('pointerdown', () => {
+      this.pointerDowned = true;
+    });
+    sequencerContainer.addEventListener('pointerup', (e) => {
+      if (!e.isPrimary) return;
+      this.pointerDowned = false;
     });
 
     // BPM control
@@ -466,9 +478,12 @@ class Sequencer {
     document.getElementById('app')!.style.setProperty('--scrollbar-width', `${section.offsetHeight - section.clientHeight}px`);
     section.scrollTop = 20 * (12 * 2 + 2); // 2 octaves + extra space
     section.addEventListener('scroll', (e) => {
+      if (this.pointerDowned) {
+        this.autoScroll = false;
+      }
       const target = e.target as HTMLElement;
-      const scrollLeft = target.scrollLeft; 
-      document.querySelector('.rhythm-section')!.scrollLeft = scrollLeft;
+      const scrollLeft = target.scrollLeft;
+      document.querySelector('.rhythm-section')!.scrollTo({ left: scrollLeft });
     });
 
     // Add pointer listener for note creation
@@ -597,9 +612,12 @@ class Sequencer {
 
   private initializeRhythmSection() {
     document.querySelector('.rhythm-section')?.addEventListener('scroll', (e) => {
+      if (this.pointerDowned) {
+        this.autoScroll = false;
+      }
       const target = e.target as HTMLElement;
       const scrollLeft = target.scrollLeft;
-      document.querySelector('.piano-roll-section')!.scrollLeft = scrollLeft;
+      document.querySelector('.piano-roll-section')!.scrollTo({ left: scrollLeft });
     });
     document.querySelectorAll('.rhythm-grid').forEach((grid, trackIndex) => {
       // Create beats grid
@@ -1035,7 +1053,6 @@ class Sequencer {
     sequencerContainer.classList.add('playing');
     sequencerContainer.classList.remove('paused');
 
-    let initial = true;
     this.lastBpmChangeTime = performance.now();
     this.lastBpmChangeBeat = startPos;
     
@@ -1052,17 +1069,11 @@ class Sequencer {
       // playbackPositionの位置を更新（1ビート = 40px）
       const positionInPixels = this.currentBeat * 40;
       playbackPosition.style.setProperty('--position', `${positionInPixels}px`);
-      
-      const rhythmRect = rhythmSection.getBoundingClientRect();
-      const playbackRect = playbackPosition.getBoundingClientRect();
-      const rhythmCenter = rhythmRect.left + rhythmRect.width / 2;
-      const playbackCenter = playbackRect.left + playbackRect.width / 2;
 
-      const nearCenterThreshold = rhythmRect.width / 6;
-      if (initial || Math.abs(playbackCenter - rhythmCenter) < nearCenterThreshold) {
+      if (this.autoScroll) {
         playbackPosition.scrollIntoView({ block: 'nearest', inline: 'center' });
-        initial = false;
-      } else if (this.currentBeat <= 0.1) {
+      } else if (this.currentBeat <= 0.2) {
+        this.autoScroll = true;
         rhythmSection.scrollTo({ left: 0 });
       }
       this.animationId = requestAnimationFrame(playRendering);
