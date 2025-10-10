@@ -1087,6 +1087,7 @@ class Sequencer {
 
     await this.audioManager.resume();
     this.isPlaying = true;
+    this.autoScroll = true;
     this.renderPlayButton();
     const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
     const playbackPosition = document.querySelector('.playback-position') as HTMLElement;
