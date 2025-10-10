@@ -1,6 +1,8 @@
 {
   "title": "AnySound Sequencer",
+  "previous": "Previous",
   "play": "Play",
+  "pause": "Pause",
   "stop": "Stop",
   "loop": "Loop", 
   "record": "Record",

@@ -523,6 +523,7 @@ header {
 .playback-controls {
   display: flex;
   gap: 10px;
+  align-items: center;
   justify-content: center;
 
   button {
@@ -534,6 +535,12 @@ header {
     align-items: center;
     justify-content: center;
 
+    &#prev-btn {
+      width: 40px;
+      height: 40px;
+      font-size: 24px;
+    }
+
     &#play-btn {
       background: #4caf50;
 
@@ -542,10 +549,10 @@ header {
       }
 
       &.is-playing {
-        background: #f44336;
+        background: #ff9800;
 
         &:hover {
-          background: #da190b;
+          background: #fb8c00;
         }
       }
     }

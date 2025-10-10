@@ -1,6 +1,8 @@
 {
   "title": "AnySound シーケンサー",
+  "previous": "前へ",
   "play": "再生",
+  "pause": "一時停止",
   "stop": "停止",
   "loop": "ループ",
   "record": "録音",

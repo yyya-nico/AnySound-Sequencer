@@ -331,6 +331,7 @@ class Sequencer {
   private lastBpmChangeBeat: number = 0;
   private initialBpm: number = 120;
   private currentBeat: number = 0;
+  private playedNotes: Set<string> = new Set();
   private pointerDowned: boolean = false;
   private autoScroll: boolean = true;
 
@@ -352,9 +353,13 @@ class Sequencer {
 
   private setupEventListeners() {
     // Playback controls
+    document.getElementById('prev-btn')?.addEventListener('click', () => {
+      this.previous();
+    });
+
     document.getElementById('play-btn')?.addEventListener('click', () => {
       if (this.isPlaying) {
-        this.stop();
+        this.pause();
       } else {
         this.play();
       }
@@ -1070,6 +1075,20 @@ class Sequencer {
     }
   }
 
+  private previous() {
+    this.lastBpmChangeTime = performance.now();
+    this.lastBpmChangeBeat = 0;
+    this.currentBeat = 0;
+    this.initialBpm = this.bpm * this.playbackSpeed;
+    this.playedNotes.clear();
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.setPositionState({
+        duration: this.positionToSec(this.getEndOfTrack()),
+        position: 0,
+      });
+    }
+  }
+
   private async play() {
     if (this.isPlaying) {
       this.loopTimeout && clearTimeout(this.loopTimeout);
@@ -1095,7 +1114,6 @@ class Sequencer {
         position: this.positionToSec(this.currentBeat)
       });
     }
-    const played = new Set<string>();
 
     const playRendering = (timeStamp: number) => {
       // 現在のビート位置を時間ベースで計算
@@ -1129,18 +1147,18 @@ class Sequencer {
       // Play notes at current beat
       this.notes.forEach(trackNotes => {
         trackNotes.forEach(note => {
-          if (note.start <= this.currentBeat && note.start + 0.1 > this.currentBeat && !played.has(note.id)) {
+          if (note.start <= this.currentBeat && note.start + 0.1 > this.currentBeat && !this.playedNotes.has(note.id)) {
             this.audioManager.playNote(note, this.bpm * this.playbackSpeed);
-            played.add(note.id);
+            this.playedNotes.add(note.id);
           }
         });
       });
 
       // Play beats at current beat
       this.beats.forEach(beat => {
-        if (beat.position <= this.currentBeat && beat.position + 0.1 > this.currentBeat && !played.has(beat.id)) {
+        if (beat.position <= this.currentBeat && beat.position + 0.1 > this.currentBeat && !this.playedNotes.has(beat.id)) {
           this.audioManager.playBeat(beat);
-          played.add(beat.id);
+          this.playedNotes.add(beat.id);
         }
       });
 
@@ -1150,17 +1168,7 @@ class Sequencer {
           this.stop();
           return;
         }
-        this.lastBpmChangeTime = performance.now();
-        this.lastBpmChangeBeat = 0;
-        this.currentBeat = 0;
-        this.initialBpm = this.bpm * this.playbackSpeed;
-        played.clear();
-        if ('mediaSession' in navigator) {
-          navigator.mediaSession.setPositionState({
-            duration: this.positionToSec(this.getEndOfTrack()),
-            position: 0,
-          });
-        }
+        this.previous();
       }
 
       this.loopTimeout = setTimeout(playLoop, 1);
@@ -1205,9 +1213,9 @@ class Sequencer {
     const playBtn = document.getElementById('play-btn') as HTMLButtonElement;
     if (this.isPlaying) {
       playBtn.classList.add('is-playing');
-      playBtn.textContent = 'stop';
-      playBtn.dataset.i18n = 'stop';
-      playBtn.title = i18next.t('stop');
+      playBtn.textContent = 'pause';
+      playBtn.dataset.i18n = 'pause';
+      playBtn.title = i18next.t('pause');
     } else {
       playBtn.classList.remove('is-playing');
       playBtn.textContent = 'play_arrow';
