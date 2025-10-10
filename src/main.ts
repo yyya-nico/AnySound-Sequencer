@@ -476,6 +476,16 @@ class Sequencer {
     document.getElementById('melody-pitch-shift')?.addEventListener('input', (e) => {
       const pitchShift = (e.target as HTMLInputElement).valueAsNumber || 0;
       this.audioManager.setMelodyPitchShift(pitchShift);
+
+      const noteId = `preview-pitch-shift-${Date.now()}`
+      const note: Note = {
+        id: noteId,
+        pitch: 60 + pitchShift, // C4にピッチシフトを反映
+        start: 0,
+        length: this.defaultNoteLength,
+        velocity: 100
+      };
+      this.audioManager.playNotePreview(note, this.bpm * this.playbackSpeed, noteId);
     });
 
     document.getElementById('clear-btn')?.addEventListener('click', () => {
