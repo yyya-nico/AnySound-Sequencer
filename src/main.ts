@@ -1070,6 +1070,8 @@ class Sequencer {
     this.lastBpmChangeBeat = 0;
     this.currentBeat = 0;
     this.playedNotes.clear();
+    const pianoRollSection = document.querySelector('.piano-roll-section') as HTMLElement;
+    pianoRollSection.scrollTo({ left: 0 });
     if ('mediaSession' in navigator) {
       navigator.mediaSession.setPositionState({
         duration: this.positionToSec(this.getEndOfTrack()),
@@ -1184,15 +1186,11 @@ class Sequencer {
     this.renderPlayButton();
     this.loopTimeout && clearTimeout(this.loopTimeout);
     this.animationId && cancelAnimationFrame(this.animationId);
-    this.lastBpmChangeTime = performance.now();
-    this.lastBpmChangeBeat = 0;
-    this.currentBeat = 0;
+    this.previous();
     const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
-    const pianoRollSection = document.querySelector('.piano-roll-section') as HTMLElement;
     const playbackPosition = document.querySelector('.playback-position') as HTMLElement;
     sequencerContainer.classList.remove('playing', 'paused');
     playbackPosition.style.removeProperty('--position');
-    pianoRollSection.scrollTo({ left: 0 });
     if ('mediaSession' in navigator) {
       navigator.mediaSession.playbackState = 'none';
     }
