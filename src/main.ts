@@ -322,7 +322,7 @@ class Sequencer {
   private bpm: number = 120;
   private playbackSpeed: number = 1; // 0.5x, 1x, 2x
   private defaultNoteLength: number = 1;
-  private isPlaying: boolean = false;
+  private paused: boolean = true;
   private gridSize: number = 64; // 64 beats
   private loopTimeout: number | null = null;
   private animationId: number | null = null;
@@ -357,10 +357,10 @@ class Sequencer {
     });
 
     document.getElementById('play-btn')?.addEventListener('click', () => {
-      if (this.isPlaying) {
-        this.pause();
-      } else {
+      if (this.paused) {
         this.play();
+      } else {
+        this.pause();
       }
     });
 
@@ -408,7 +408,7 @@ class Sequencer {
       const newBpm = (e.target as HTMLInputElement).valueAsNumber;
       
       // 再生中の場合、現在のビート位置を記録してからBPMを変更
-      if (this.isPlaying) {
+      if (!this.paused) {
         this.updateBpmDuringPlayback();
       }
       this.bpm = newBpm;
@@ -420,7 +420,7 @@ class Sequencer {
       const newPlaybackSpeed = parseFloat((e.target as HTMLSelectElement).value);
       
       // 再生中の場合、現在のビート位置を記録してから再生速度を変更
-      if (this.isPlaying) {
+      if (!this.paused) {
         this.updateBpmDuringPlayback();
       }
       this.playbackSpeed = newPlaybackSpeed;
@@ -1074,7 +1074,7 @@ class Sequencer {
   }
 
   private updateBpmDuringPlayback() {
-    if (!this.isPlaying) return;
+    if (this.paused) return;
     
     // 現在のビート位置を計算
     const now = performance.now();
@@ -1113,12 +1113,15 @@ class Sequencer {
   }
 
   private async play() {
-    if (this.isPlaying) {
+    if (!this.paused) {
       this.loopTimeout && clearTimeout(this.loopTimeout);
+    }
+    if (this.currentBeat >= this.getEndOfTrack()) {
+      this.resetPlayback();
     }
 
     await this.audioManager.resume();
-    this.isPlaying = true;
+    this.paused = false;
     this.autoScroll = true;
     this.renderPlayButton();
     const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
@@ -1158,7 +1161,7 @@ class Sequencer {
     this.animationId = requestAnimationFrame(playRendering);
 
     const playLoop = () => {
-      if (!this.isPlaying) return;
+      if (this.paused) return;
     
       const now = performance.now();
       
@@ -1201,7 +1204,7 @@ class Sequencer {
   }
 
   private pause() {
-    this.isPlaying = false;
+    this.paused = true;
     this.renderPlayButton();
     this.loopTimeout && clearTimeout(this.loopTimeout);
     this.animationId && cancelAnimationFrame(this.animationId);
@@ -1214,11 +1217,10 @@ class Sequencer {
   }
 
   private stop() {
-    this.isPlaying = false;
+    this.paused = true;
     this.renderPlayButton();
     this.loopTimeout && clearTimeout(this.loopTimeout);
     this.animationId && cancelAnimationFrame(this.animationId);
-    this.resetPlayback();
     const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
     sequencerContainer.classList.remove('playing', 'paused');
     if ('mediaSession' in navigator) {
@@ -1228,16 +1230,16 @@ class Sequencer {
   
   private renderPlayButton() {
     const playBtn = document.getElementById('play-btn') as HTMLButtonElement;
-    if (this.isPlaying) {
-      playBtn.classList.add('is-playing');
-      playBtn.textContent = 'pause';
-      playBtn.dataset.i18n = 'pause';
-      playBtn.title = i18next.t('pause');
-    } else {
+    if (this.paused) {
       playBtn.classList.remove('is-playing');
       playBtn.textContent = 'play_arrow';
       playBtn.dataset.i18n = 'play';
       playBtn.title = i18next.t('play');
+    } else {
+      playBtn.classList.add('is-playing');
+      playBtn.textContent = 'pause';
+      playBtn.dataset.i18n = 'pause';
+      playBtn.title = i18next.t('pause');
     }
   }
 }
