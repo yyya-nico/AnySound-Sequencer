@@ -627,7 +627,7 @@ class Sequencer {
     });
 
     pianoRoll.addEventListener('pointermove', (e) => {
-      if (!e.isPrimary || e.button !== 0) return; // 左クリックのみ
+      if (!e.isPrimary || e.buttons !== 1) return; // 左クリックのみ
       if (isDragging) {
         handlePointerOperation(e);
       }
