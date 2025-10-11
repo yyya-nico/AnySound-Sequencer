@@ -79,7 +79,10 @@
         <div class="playback-controls">
           <button id="prev-btn" class="material-icons" data-i18n="previous" title="Previous">skip_previous</button>
           <button id="play-btn" class="material-icons" data-i18n="play" title="Play">play_arrow</button>
-          <label for="loop-toggle"><input type="checkbox" id="loop-toggle" checked><span data-i18n="loop">Loop</span></label>
+          <span class="toggle-btn" data-i18n="loop" title="Loop">
+            <input type="checkbox" id="loop-toggle" checked>
+            <label class="material-icons" for="loop-toggle">repeat</label>
+          </span>
         </div>
         
         <!-- BPM設定 -->
