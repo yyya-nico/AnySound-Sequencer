@@ -321,6 +321,7 @@ class Sequencer {
   private currentTrack: number = 0;
   private bpm: number = 120;
   private playbackSpeed: number = 1; // 0.5x, 1x, 2x
+  private quantization: number = 0.5; // in beats
   private defaultNoteLength: number = 1;
   private paused: boolean = true;
   private gridSize: number = 64; // 64 beats
@@ -421,6 +422,7 @@ class Sequencer {
         }
       });
     });
+
     const menu = document.querySelector('.menu') as HTMLElement;
     const menuBtn = document.querySelector('.menu-btn') as HTMLButtonElement;
     const menuContent = document.querySelector('.menu-content') as HTMLElement;
@@ -441,6 +443,11 @@ class Sequencer {
         this.updateBpmDuringPlayback();
       }
       this.playbackSpeed = newPlaybackSpeed;
+    });
+    const quantizationSelect = document.getElementById('quantization-select') as HTMLSelectElement;
+    quantizationSelect?.addEventListener('change', (e) => {
+      const newQuantization = parseFloat((e.target as HTMLSelectElement).value);
+      this.quantization = newQuantization;
     });
 
     // Audio file inputs
@@ -743,7 +750,12 @@ class Sequencer {
       }
       if (isResizing && currentNote) {
         const deltaX = pointerEvent.clientX - startX;
-        const newNoteValue = Math.max(0.5, Math.floor((originalWidth + deltaX) / 20) / 2); // 20px per 0.5 beat
+        let newNoteValue = null;
+        if (this.quantization < 0) {
+          newNoteValue = Math.max(0, (originalWidth + deltaX) / 40);
+        } else {
+          newNoteValue = Math.max(this.quantization, Math.round((originalWidth + deltaX) / (this.quantization * 40)) * this.quantization); // 20px per 0.5 beat
+        }
         currentNote.style.setProperty('--length', newNoteValue.toString());
 
         // Update note data

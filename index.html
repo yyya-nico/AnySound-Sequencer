@@ -107,6 +107,16 @@
                 <option value="4" data-i18n="quadruple_speed">4x</option>
               </select>
             </div>
+            <!-- クオンタイズ -->
+            <div class="quantization-control">
+              <label for="quantization-select" data-i18n="quantization">Quantization</label>
+              <select id="quantization-select">
+                <option value="1" data-i18n="4th_note">1/4</option>
+                <option value="0.5" data-i18n="8th_note" selected>1/8</option>
+                <option value="0.25" data-i18n="16th_note">1/16</option>
+                <option value="-1" data-i18n="no_quantization">None</option>
+              </select>
+            </div>
             <!-- 全消去 -->
             <div class="clear-button">
               <button id="clear-btn" class="danger" data-i18n="clear_all">Clear All</button>

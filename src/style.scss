@@ -579,7 +579,7 @@ header {
 
 .control-panel {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 10px;
   background: #232323;
   border-block-start: 2px solid #333;
@@ -703,7 +703,6 @@ header {
   place-items: center right;
   order: 3;
   position: relative;
-  text-align: right;
 
   &.is-open {
     .menu-content {
@@ -721,6 +720,10 @@ header {
 }
 
 .menu-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: 10px;
   position: absolute;
   right: -10px;
   bottom: calc(100% + 12px);
@@ -728,24 +731,17 @@ header {
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.1s ease, visibility 0.1s ease;
-  width: 200px;
-  padding-inline: 10px;
+  width: 280px;
+  padding: 10px;
   background: #303030;
   border: 1px solid #333;
   border-radius: 5px;
   box-shadow: 0 0 8px 0 #000000;
-
-  > * {
-    margin-block: 10px;
-  }
 }
 
-.speed-control {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-  margin-block: 20px;
+.speed-control,
+.quantization-control {
+  display: contents;
 
   label {
     color: #ccc;
@@ -755,6 +751,7 @@ header {
 
 .clear-button {
   text-align: center;
+  grid-column: 1 / -1;
 
   button {
     width: 100%;
@@ -797,7 +794,7 @@ header {
   padding-inline: 4px;
   cursor: pointer;
   width: calc(var(--width-per-note) * var(--length));
-  min-width: 20px;
+  min-width: 10px;
   height: 18px;
   color: #000;
   font-size: 14px;
