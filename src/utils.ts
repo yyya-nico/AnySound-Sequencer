@@ -49,4 +49,8 @@ const dispatchPointerPressEvent = (elem: HTMLElement) => {
   elem.addEventListener("pointercancel", onPointerUp);
 };
 
-export { filenameToName, resetAnimation, dispatchPointerPressEvent };
+const minmax = (value: number, min: number, max: number) => {
+  return Math.min(Math.max(value, min), max);
+}
+
+export { filenameToName, resetAnimation, dispatchPointerPressEvent, minmax };

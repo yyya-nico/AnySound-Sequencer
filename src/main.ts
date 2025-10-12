@@ -1,7 +1,7 @@
 import localForage from 'localforage';
 import i18next from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
-import { filenameToName, dispatchPointerPressEvent, resetAnimation } from './utils';
+import { filenameToName, dispatchPointerPressEvent, resetAnimation, minmax } from './utils';
 
 import en from './locales/en.json';
 import ja from './locales/ja.json';
@@ -407,7 +407,11 @@ class Sequencer {
     const bpmValue = document.getElementById('bpm-value') as HTMLInputElement;
     [bpmSlider, bpmValue].forEach(element => {
       element.addEventListener('input', (e) => {
-        const newBpm = (e.target as HTMLInputElement).valueAsNumber;
+        const input = e.target as HTMLInputElement;
+        if (!input.value) {
+          return;
+        }
+        const newBpm = minmax(input.valueAsNumber, input.min ? parseInt(input.min) : 60, input.max ? parseInt(input.max) : 300);
 
         // 再生中の場合、現在のビート位置を記録してからBPMを変更
         if (!this.paused) {
@@ -419,6 +423,13 @@ class Sequencer {
           if (bpmValue) bpmValue.valueAsNumber = newBpm;
         } else {
           if (bpmSlider) bpmSlider.valueAsNumber = newBpm;
+        }
+      });
+      element.addEventListener('change', (e) => {
+        const input = e.target as HTMLInputElement;
+        if (!input.value || !input.checkValidity()) {
+          input.valueAsNumber = this.bpm;
+          return;
         }
       });
     });
@@ -858,7 +869,7 @@ class Sequencer {
       this.bpm = savedBpm;
       const bpmSlider = document.getElementById('bpm-slider') as HTMLInputElement;
       const bpmValue = document.getElementById('bpm-value') as HTMLInputElement;
-      if (bpmSlider) bpmSlider.value = this.bpm.toString();
+      if (bpmSlider) bpmSlider.valueAsNumber = this.bpm;
       if (bpmValue) bpmValue.valueAsNumber = this.bpm;
     }
 
@@ -1015,7 +1026,7 @@ class Sequencer {
     document.querySelectorAll('.beat.active').forEach(beat => beat.classList.remove('active'));
     const bpmSlider = document.getElementById('bpm-slider') as HTMLInputElement;
     const bpmValue = document.getElementById('bpm-value') as HTMLInputElement;
-    if (bpmSlider) bpmSlider.value = this.bpm.toString();
+    if (bpmSlider) bpmSlider.valueAsNumber = this.bpm;
     if (bpmValue) bpmValue.valueAsNumber = this.bpm;
     const speedSelect = document.getElementById('speed-select') as HTMLSelectElement;
     if (speedSelect) speedSelect.value = this.playbackSpeed.toString();
