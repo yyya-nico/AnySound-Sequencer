@@ -987,6 +987,7 @@ class Sequencer {
   }
 
   private moveNote(noteId: string, newStart: number, newPitch: number) {
+    if (newStart < 0) newStart = 0;
     const trackNotes = this.getCurrentTrackNotes()
     const note = trackNotes.find(n => n.id === noteId);
     if (note) {
