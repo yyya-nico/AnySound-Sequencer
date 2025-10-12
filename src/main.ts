@@ -1138,7 +1138,7 @@ class Sequencer {
     if ('mediaSession' in navigator) {
       navigator.mediaSession.setPositionState({
         duration: this.positionToSec(this.getEndOfTrack()),
-        position: this.positionToSec(this.currentBeat)
+        position: this.positionToSec(Math.min(this.currentBeat, this.getEndOfTrack()))
       });
     }
   }
