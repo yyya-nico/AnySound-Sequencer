@@ -983,7 +983,7 @@ class Sequencer {
 
     const sectionRect = section.getBoundingClientRect();
     const x = e.clientX - sectionRect.left, y = e.clientY - sectionRect.top;
-    const edgeThreshold = 200;
+    const edgeThreshold = 50;
 
     if (y > sectionRect.height - edgeThreshold) {
       section.scrollBy({ top: 20 });
