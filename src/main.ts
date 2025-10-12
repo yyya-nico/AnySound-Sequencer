@@ -580,7 +580,7 @@ class Sequencer {
       const rect = pianoRoll.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
-      const pointerNotePosition = Math.floor(x / 20) / 2; // 20px per 0.5 beat
+      const pointerNotePosition = Math.floor(x / (this.quantization * 40)) * this.quantization; // 20px per 0.5 beat
       const pointerNoteIndex = Math.floor(y / 20);
       const pointerMidiNote = 108 - pointerNoteIndex; // C8 at top
       const isPointerDown = e.type === 'pointerdown';
