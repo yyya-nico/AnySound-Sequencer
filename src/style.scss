@@ -611,43 +611,23 @@ header {
   align-items: center;
   justify-content: center;
 
-  button {
-    border-radius: 50%;
+  > * {
     display: flex;
     align-items: center;
     justify-content: center;
+  }
 
-    &#prev-btn {
-      width: 40px;
-      height: 40px;
-    }
+  button#prev-btn,
+  .toggle-btn {
+    width: 40px;
+    height: 40px;
+    background: none;
+  }
 
-    &#play-btn {
-      width: 50px;
-      height: 50px;
-      background: #4caf50;
-      font-size: 36px;
-
-      &:hover {
-        background: #45a049;
-      }
-
-      &:active {
-        background: #246527;
-      }
-
-      &.is-playing {
-        background: #ff9800;
-
-        &:hover {
-          background: #fb8c00;
-        }
-
-        &:active {
-          background: #a85400;
-        }
-      }
-    }
+  button#play-btn {
+    width: 50px;
+    height: 50px;
+    font-size: 36px;
   }
 
   .toggle-btn {
@@ -655,6 +635,11 @@ header {
     position: relative;
     width: 40px;
     height: 40px;
+
+    &:hover,
+    &:active {
+      background: none;
+    }
 
     input[type="checkbox"] {
       position: absolute;
@@ -752,7 +737,7 @@ header {
   transition: opacity 0.1s ease, visibility 0.1s ease;
   width: 280px;
   padding: 10px;
-  background: #303030;
+  background: #2d2d2d;
   border: 1px solid #333;
   border-radius: 5px;
   box-shadow: 0 0 8px 0 #000000;
@@ -776,10 +761,10 @@ header {
     width: 100%;
     padding: 10px;
     font-size: 14px;
-    background-color: #434343;
+    background-color: #3f3f3f;
 
     &:hover {
-      background-color: #555555;
+      background-color: #494949;
     }
 
     &:active {
