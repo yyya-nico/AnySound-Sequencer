@@ -848,6 +848,7 @@ class Sequencer {
     const savedBeats = await localForage.getItem<Beat[]>('beats');
     const savedBpm = await localForage.getItem<number>('bpm');
     const savedPlaybackSpeed = await localForage.getItem<number>('playbackSpeed');
+    const savedQuantization = await localForage.getItem<number>('quantization');
     const savedAudioFiles = await localForage.getItem<Files>('audioFiles');
     const savedMelodyPitchShift = await localForage.getItem<number>('melodyPitchShift');
 
@@ -877,6 +878,12 @@ class Sequencer {
       this.playbackSpeed = savedPlaybackSpeed;
       const speedSelect = document.getElementById('speed-select') as HTMLSelectElement;
       if (speedSelect) speedSelect.value = this.playbackSpeed.toString();
+    }
+
+    if (savedQuantization !== null && !isNaN(savedQuantization)) {
+      this.quantization = savedQuantization;
+      const quantizationSelect = document.getElementById('quantization-select') as HTMLSelectElement;
+      if (quantizationSelect) quantizationSelect.value = this.quantization.toString();
     }
 
     if (savedAudioFiles) {
@@ -928,6 +935,7 @@ class Sequencer {
     localForage.setItem('beats', this.beats);
     localForage.setItem('bpm', this.bpm);
     localForage.setItem('playbackSpeed', this.playbackSpeed);
+    localForage.setItem('quantization', this.quantization);
     localForage.setItem('audioFiles', this.files);
 
     const melodyPitchShift = (document.getElementById('melody-pitch-shift') as HTMLInputElement).valueAsNumber;
