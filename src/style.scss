@@ -473,17 +473,35 @@ header {
       cursor: inherit;
     }
   }
+
+  &.playback-drag {
+    cursor: col-resize;
+  }
 }
 
 .playback-position {
-  position: absolute;
+  flex-shrink: 0;
+  position: sticky;
   top: 0;
-  left: -1px;
   z-index: 1;
   width: 2px;
   height: 100%;
+  margin-inline-end: -2px;
   background: #a11f1f;
   transform: translateX(var(--position, 0px));
+  cursor: col-resize;
+
+  &::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    translate: -50% 0;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #a11f1f;
+  }
 }
 
 #track-selector {

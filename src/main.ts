@@ -620,6 +620,7 @@ class Sequencer {
         }
         if (shouldMove) {
           this.moveNote(currentNote.id, newNotePos, newPitch);
+          this.scrollByDragging(e);
         }
       } else {
         const id = this.addNote(pointerMidiNote, pointerNotePosition, this.defaultNoteLength);
@@ -688,6 +689,57 @@ class Sequencer {
     pianoRoll.addEventListener('dblclick', removeNoteByEvent);
     pianoRoll.addEventListener('pointerpress', (e) => {
       removeNoteByEvent(e as CustomEvent);
+    });
+
+    const playbackPosition = document.querySelector('.playback-position') as HTMLElement;
+    let playbackDragging = false;
+    let beforePos = 0;
+    let initialRelativeX = 0; // pianoRoll内での相対位置
+    
+    playbackPosition.addEventListener('pointerdown', (e) => {
+      if (!e.isPrimary || e.button !== 0) return; // 左クリックのみ
+      playbackDragging = true;
+      
+      const pianoRollRect = pianoRoll.getBoundingClientRect();
+      initialRelativeX = e.clientX - pianoRollRect.left; // pianoRoll内での相対X座標
+      beforePos = parseFloat(playbackPosition.style.getPropertyValue('--position')) || 0;
+      pianoRoll.classList.add('playback-drag');
+    });
+    
+    pianoRoll.addEventListener('pointermove', (e) => {
+      if (!playbackDragging) return;
+      
+      const pianoRollRect = pianoRoll.getBoundingClientRect();
+      const currentRelativeX = e.clientX - pianoRollRect.left;
+      const deltaX = currentRelativeX - initialRelativeX;
+      
+      const newPosition = minmax(beforePos + deltaX, 0, this.gridSize * 40);
+      playbackPosition.style.setProperty('--position', `${newPosition}px`);
+      const newBeat = newPosition / 40;
+      this.currentBeat = newBeat;
+
+      // Play notes at current beat
+      this.notes.forEach(trackNotes => {
+        trackNotes.forEach(note => {
+          if (note.start <= this.currentBeat && note.start + 0.1 > this.currentBeat && !this.playedNotes.has(note.id)) {
+            this.audioManager.playNote(note, this.bpm * this.playbackSpeed);
+          }
+        });
+      });
+
+      // Play beats at current beat
+      this.beats.forEach(beat => {
+        if (beat.position <= this.currentBeat && beat.position + 0.1 > this.currentBeat && !this.playedNotes.has(beat.id)) {
+          this.audioManager.playBeat(beat);
+        }
+      });
+
+      this.scrollByDragging(e);
+    });
+    document.addEventListener('pointerup', (e) => {
+      if (!e.isPrimary || e.button !== 0) return; // 左クリックのみ
+      playbackDragging = false;
+      pianoRoll.classList.remove('playback-drag');
     });
   }
 
@@ -923,6 +975,28 @@ class Sequencer {
     }
 
     this.renderCurrentTrack();
+  }
+
+  private scrollByDragging(e: PointerEvent) {
+    const section = document.querySelector('.piano-roll-section') as HTMLElement;
+    if (!section) return;
+
+    const sectionRect = section.getBoundingClientRect();
+    const x = e.clientX - sectionRect.left, y = e.clientY - sectionRect.top;
+    const edgeThreshold = 200;
+
+    if (y > sectionRect.height - edgeThreshold) {
+      section.scrollBy({ top: 20 });
+    }
+    if (x > sectionRect.width - edgeThreshold) {
+      section.scrollBy({ left: 20 });
+    }
+    if (y < edgeThreshold) {
+      section.scrollBy({ top: -20 });
+    }
+    if (x < edgeThreshold) {
+      section.scrollBy({ left: -20 });
+    }
   }
 
   private saveData() {
@@ -1257,6 +1331,7 @@ class Sequencer {
     this.renderPlayButton();
     this.loopTimeout && clearTimeout(this.loopTimeout);
     this.animationId && cancelAnimationFrame(this.animationId);
+    this.playedNotes.clear();
     const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
     sequencerContainer.classList.remove('playing');
     sequencerContainer.classList.add('paused');
@@ -1270,6 +1345,7 @@ class Sequencer {
     this.renderPlayButton();
     this.loopTimeout && clearTimeout(this.loopTimeout);
     this.animationId && cancelAnimationFrame(this.animationId);
+    this.playedNotes.clear();
     const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
     sequencerContainer.classList.remove('playing', 'paused');
     if ('mediaSession' in navigator) {
