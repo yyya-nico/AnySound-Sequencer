@@ -734,7 +734,7 @@ class Sequencer {
         }
       });
 
-      this.scrollByDragging(e);
+      this.scrollByDragging(e, true);
     });
     document.addEventListener('pointerup', (e) => {
       if (!e.isPrimary || e.button !== 0) return; // 左クリックのみ
@@ -977,7 +977,7 @@ class Sequencer {
     this.renderCurrentTrack();
   }
 
-  private scrollByDragging(e: PointerEvent) {
+  private scrollByDragging(e: PointerEvent, horizontalOnly: boolean = false) {
     const section = document.querySelector('.piano-roll-section') as HTMLElement;
     if (!section) return;
 
@@ -985,13 +985,13 @@ class Sequencer {
     const x = e.clientX - sectionRect.left, y = e.clientY - sectionRect.top;
     const edgeThreshold = 50;
 
-    if (y > sectionRect.height - edgeThreshold) {
+    if (!horizontalOnly && y > sectionRect.height - edgeThreshold) {
       section.scrollBy({ top: 20 });
     }
     if (x > sectionRect.width - edgeThreshold) {
       section.scrollBy({ left: 20 });
     }
-    if (y < edgeThreshold) {
+    if (!horizontalOnly && y < edgeThreshold) {
       section.scrollBy({ top: -20 });
     }
     if (x < edgeThreshold) {
