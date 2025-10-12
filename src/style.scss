@@ -744,8 +744,8 @@ header {
   align-items: center;
   gap: 10px;
   position: absolute;
-  right: -10px;
-  bottom: calc(100% + 12px);
+  right: 0;
+  bottom: calc(100% - 2px);
   z-index: 2;
   opacity: 0;
   visibility: hidden;
