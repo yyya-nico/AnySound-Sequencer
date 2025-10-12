@@ -656,22 +656,22 @@ header {
       opacity: 0;
       border-radius: 50%;
       appearance: none;
-    }
 
-    label {
-      color: #6d6d6d;
+      + label {
+        color: #6d6d6d;
+      }
 
-      &:hover {
+      &:hover + label {
         color: #ccc;
       }
 
-      &:active {
+      &:active + label {
         color: #888;
       }
-    }
 
-    input[type="checkbox"]:checked + label {
-      color: inherit;
+      &:checked + label {
+        color: inherit;
+      }
     }
   }
 }
