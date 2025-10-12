@@ -21,6 +21,7 @@
   "select_sound_source_file": "音源ファイルを選択",
   "back_to_sine_wave": "正弦波に戻す",
   "pitch_shift": "ピッチシフト",
+  "menu": "メニュー",
   "melody_volume": "メロディー音量",
   "beat_volume": "ビート音量",
   "clear_all": "全消去",

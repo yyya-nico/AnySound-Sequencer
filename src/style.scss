@@ -279,9 +279,9 @@ blockquote {
 }
 
 header {
-  position: sticky;
-  top: 0;
-  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   overflow: hidden;
   height: var(--header-height);
   padding: 15px 12.5px;
@@ -291,9 +291,6 @@ header {
   white-space: nowrap;
   word-break: break-all;
   text-overflow: ellipsis;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 
   a:any-link {
     color: inherit;
@@ -319,9 +316,8 @@ header {
 
 // Sequencer specific styles
 #app {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-rows: minmax(0, 1fr) auto;
+  display: flex;
+  flex-direction: column;
   width: 100%;
   height: calc(100% - var(--header-height));
   overflow: hidden;
@@ -338,6 +334,7 @@ header {
   grid-area: 1 / 1 / 2 / 3;
   display: flex;
   flex-direction: column;
+  min-height: 0;
   background: #1a1a1a;
 }
 
@@ -583,16 +580,14 @@ header {
 .control-panel {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  grid-column: 1 / -1;
+  gap: 10px;
   background: #232323;
   border-block-start: 2px solid #333;
-  padding-block: 5px;
-  padding-inline: 20px;
+  padding: 10px;
 }
 
 .playback-controls {
-  grid-area: 1 / 2 / 3 / 3;
+  order: 2;
   display: flex;
   gap: 10px;
   align-items: center;
@@ -670,65 +665,110 @@ header {
 }
 
 .bpm-control {
-  grid-area: 1 / 1;
+  justify-self: right;
+  order: 1;
+  width: 200px;
+  padding-inline: 10px;
   text-align: center;
-
-  > * {
-    display: block;
-    margin-block: 10px;
-  }
 
   label {
     color: #ccc;
   }
 
   #bpm-value {
+    all: revert;
+    width: 30px;
+    padding: 0;
+    border: 0;
+    margin: 0;
+    background: none;
+    font: inherit;
     font-weight: bold;
     color: #66ccff;
-  }
+    appearance: none;
+    -moz-appearance: textfield;
 
-  input[type="range"] {
-    width: 100%;
-  }
-
-  .speed-control {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
-    margin-block: 20px;
-
-    label {
-      color: #ccc;
-      font-size: 14px;
+    &::-webkit-inner-spin-button {
+      display: none;
     }
+  }
+
+  #bpm-slider {
+    width: 100%;
   }
 }
 
-.volume-controls {
-  .volume-group {
-    margin-block: 15px;
+.menu {
+  display: grid;
+  place-items: center right;
+  order: 3;
+  position: relative;
+  text-align: right;
 
-    label {
-      margin-block: 5px;
-      color: #ccc;
-      font-size: 14px;
+  &.is-open {
+    .menu-content {
+      opacity: 1;
+      visibility: visible;
     }
+  }
 
-    input[type="range"] {
-      width: 100%;
-    }
+  > button {
+    padding: 4px;
+    border-radius: 0;
+    background: none;
+    font-size: 36px;
+  }
+}
+
+.menu-content {
+  position: absolute;
+  right: -10px;
+  bottom: calc(100% + 12px);
+  z-index: 2;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.1s ease, visibility 0.1s ease;
+  width: 200px;
+  padding-inline: 10px;
+  background: #303030;
+  border: 1px solid #333;
+  border-radius: 5px;
+  box-shadow: 0 0 8px 0 #000000;
+
+  > * {
+    margin-block: 10px;
+  }
+}
+
+.speed-control {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-block: 20px;
+
+  label {
+    color: #ccc;
+    font-size: 14px;
   }
 }
 
 .clear-button {
-  grid-area: 2 / 3;
   text-align: center;
 
   button {
     width: 100%;
     padding: 10px;
     font-size: 14px;
+    background-color: #434343;
+
+    &:hover {
+      background-color: #555555;
+    }
+
+    &:active {
+      background-color: #111111;
+    }
   }
 }
 

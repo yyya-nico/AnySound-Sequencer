@@ -403,17 +403,34 @@ class Sequencer {
 
     // BPM control
     const bpmSlider = document.getElementById('bpm-slider') as HTMLInputElement;
-    const bpmValue = document.getElementById('bpm-value');
-    bpmSlider?.addEventListener('input', (e) => {
-      const newBpm = (e.target as HTMLInputElement).valueAsNumber;
-      
-      // 再生中の場合、現在のビート位置を記録してからBPMを変更
-      if (!this.paused) {
-        this.updateBpmDuringPlayback();
+    const bpmValue = document.getElementById('bpm-value') as HTMLInputElement;
+    [bpmSlider, bpmValue].forEach(element => {
+      element.addEventListener('input', (e) => {
+        const newBpm = (e.target as HTMLInputElement).valueAsNumber;
+
+        // 再生中の場合、現在のビート位置を記録してからBPMを変更
+        if (!this.paused) {
+          this.updateBpmDuringPlayback();
+        }
+        this.bpm = newBpm;
+
+        if (element === bpmSlider) {
+          if (bpmValue) bpmValue.valueAsNumber = newBpm;
+        } else {
+          if (bpmSlider) bpmSlider.valueAsNumber = newBpm;
+        }
+      });
+    });
+    const menu = document.querySelector('.menu') as HTMLElement;
+    const menuBtn = document.querySelector('.menu-btn') as HTMLButtonElement;
+    const menuContent = document.querySelector('.menu-content') as HTMLElement;
+    menuBtn.addEventListener('click', () => {
+      menu.classList.toggle('is-open');
+    });
+    document.addEventListener('click', (e) => {
+      if (!menuContent.contains(e.target as Node) && e.target !== menuBtn) {
+        menu.classList.remove('is-open');
       }
-      this.bpm = newBpm;
-      
-      if (bpmValue) bpmValue.textContent = this.bpm.toString();
     });
     const speedSelect = document.getElementById('speed-select') as HTMLSelectElement;
     speedSelect?.addEventListener('change', (e) => {
@@ -828,9 +845,9 @@ class Sequencer {
     if (savedBpm) {
       this.bpm = savedBpm;
       const bpmSlider = document.getElementById('bpm-slider') as HTMLInputElement;
-      const bpmValue = document.getElementById('bpm-value');
+      const bpmValue = document.getElementById('bpm-value') as HTMLInputElement;
       if (bpmSlider) bpmSlider.value = this.bpm.toString();
-      if (bpmValue) bpmValue.textContent = this.bpm.toString();
+      if (bpmValue) bpmValue.valueAsNumber = this.bpm;
     }
 
     if (savedPlaybackSpeed) {
@@ -985,9 +1002,9 @@ class Sequencer {
     document.querySelectorAll('.note').forEach(note => note.remove());
     document.querySelectorAll('.beat.active').forEach(beat => beat.classList.remove('active'));
     const bpmSlider = document.getElementById('bpm-slider') as HTMLInputElement;
-    const bpmValue = document.getElementById('bpm-value');
+    const bpmValue = document.getElementById('bpm-value') as HTMLInputElement;
     if (bpmSlider) bpmSlider.value = this.bpm.toString();
-    if (bpmValue) bpmValue.textContent = this.bpm.toString();
+    if (bpmValue) bpmValue.valueAsNumber = this.bpm;
     const speedSelect = document.getElementById('speed-select') as HTMLSelectElement;
     if (speedSelect) speedSelect.value = this.playbackSpeed.toString();
     const loopToggle = document.getElementById('loop-toggle') as HTMLInputElement;
