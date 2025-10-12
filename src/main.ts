@@ -1130,6 +1130,7 @@ class Sequencer {
     if (pitchShiftLabel) pitchShiftLabel.hidden = true;
     const pitchShiftInput = document.getElementById('melody-pitch-shift') as HTMLInputElement;
     if (pitchShiftInput) pitchShiftInput.value = '';
+    document.querySelector('.menu')?.classList.remove('is-open');
     this.saveData();
   }
 
