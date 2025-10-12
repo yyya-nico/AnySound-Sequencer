@@ -694,10 +694,13 @@ class Sequencer {
     const playbackPosition = document.querySelector('.playback-position') as HTMLElement;
     let playbackDragging = false;
     let beforePos = 0;
-    let initialRelativeX = 0; // pianoRoll内での相対位置
+    let initialRelativeX = 0;
+    let beforePaused = true;
     
     playbackPosition.addEventListener('pointerdown', (e) => {
       if (!e.isPrimary || e.button !== 0) return; // 左クリックのみ
+      beforePaused = this.paused;
+      if (!this.paused) this.pause();
       playbackDragging = true;
       
       const pianoRollRect = pianoRoll.getBoundingClientRect();
@@ -706,38 +709,41 @@ class Sequencer {
       pianoRoll.classList.add('playback-drag');
     });
     
-    pianoRoll.addEventListener('pointermove', (e) => {
-      if (!playbackDragging) return;
-      
-      const pianoRollRect = pianoRoll.getBoundingClientRect();
-      const currentRelativeX = e.clientX - pianoRollRect.left;
-      const deltaX = currentRelativeX - initialRelativeX;
-      
-      const newPosition = minmax(beforePos + deltaX, 0, this.gridSize * 40);
-      playbackPosition.style.setProperty('--position', `${newPosition}px`);
-      const newBeat = newPosition / 40;
-      this.currentBeat = newBeat;
+    [playbackPosition, pianoRoll].forEach(element => {
+      element.addEventListener('pointermove', (e) => {
+        if (!playbackDragging) return;
+        
+        const pianoRollRect = pianoRoll.getBoundingClientRect();
+        const currentRelativeX = e.clientX - pianoRollRect.left;
+        const deltaX = currentRelativeX - initialRelativeX;
+        
+        const newPosition = minmax(beforePos + deltaX, 0, this.gridSize * 40);
+        playbackPosition.style.setProperty('--position', `${newPosition}px`);
+        const newBeat = newPosition / 40;
+        this.currentBeat = newBeat;
 
-      // Play notes at current beat
-      this.notes.forEach(trackNotes => {
-        trackNotes.forEach(note => {
-          if (note.start <= this.currentBeat && note.start + 0.1 > this.currentBeat && !this.playedNotes.has(note.id)) {
-            this.audioManager.playNote(note, this.bpm * this.playbackSpeed);
+        // Play notes at current beat
+        this.notes.forEach(trackNotes => {
+          trackNotes.forEach(note => {
+            if (note.start <= this.currentBeat && note.start + 0.1 > this.currentBeat && !this.playedNotes.has(note.id)) {
+              this.audioManager.playNote(note, this.bpm * this.playbackSpeed);
+            }
+          });
+        });
+
+        // Play beats at current beat
+        this.beats.forEach(beat => {
+          if (beat.position <= this.currentBeat && beat.position + 0.1 > this.currentBeat && !this.playedNotes.has(beat.id)) {
+            this.audioManager.playBeat(beat);
           }
         });
-      });
 
-      // Play beats at current beat
-      this.beats.forEach(beat => {
-        if (beat.position <= this.currentBeat && beat.position + 0.1 > this.currentBeat && !this.playedNotes.has(beat.id)) {
-          this.audioManager.playBeat(beat);
-        }
+        this.scrollByDragging(e, true);
       });
-
-      this.scrollByDragging(e, true);
     });
     document.addEventListener('pointerup', (e) => {
-      if (!e.isPrimary || e.button !== 0) return; // 左クリックのみ
+      if (!playbackDragging || !e.isPrimary || e.button !== 0) return;
+      if (!beforePaused) this.play();
       playbackDragging = false;
       pianoRoll.classList.remove('playback-drag');
     });
