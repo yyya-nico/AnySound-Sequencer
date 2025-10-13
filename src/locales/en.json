@@ -29,6 +29,9 @@
   "menu": "Menu",
   "melody_volume": "Melody Volume",
   "beat_volume": "Beat Volume",
+  "import_midi": "Import MIDI",
+  "import_error_invalid_file": "Error importing MIDI file. Please check the file format.",
+  "export_midi": "Export MIDI",
   "clear_all": "Clear All",
   "confirm_clear_all": "Are you sure you want to clear all the work?"
 }

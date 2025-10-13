@@ -29,6 +29,9 @@
   "menu": "メニュー",
   "melody_volume": "メロディー音量",
   "beat_volume": "ビート音量",
+  "import_midi": "MIDIをインポート",
+  "import_error_invalid_file": "MIDIファイルのインポート中にエラーが発生しました。ファイル形式を確認してください。",
+  "export_midi": "MIDIをエクスポート",
   "clear_all": "全消去",
   "confirm_clear_all": "今までの作業を全て消去しますか？"
 }
