@@ -97,25 +97,27 @@
             menu
           </button>
           <div class="menu-content">
-            <!-- 再生速度設定 -->
-            <div class="speed-control">
-              <label for="speed-select" data-i18n="speed">Speed</label>
-              <select id="speed-select">
-                <option value="0.5" data-i18n="half_speed">0.5x</option>
-                <option value="1" selected data-i18n="normal_speed">1x</option>
-                <option value="2" data-i18n="double_speed">2x</option>
-                <option value="4" data-i18n="quadruple_speed">4x</option>
-              </select>
-            </div>
-            <!-- クオンタイズ -->
-            <div class="quantization-control">
-              <label for="quantization-select" data-i18n="quantization">Quantization</label>
-              <select id="quantization-select">
-                <option value="1" data-i18n="4th_note">1/4</option>
-                <option value="0.5" data-i18n="8th_note" selected>1/8</option>
-                <option value="0.25" data-i18n="16th_note">1/16</option>
-                <option value="-1" data-i18n="no_quantization">None</option>
-              </select>
+            <div class="selects">
+              <!-- 再生速度設定 -->
+              <div class="speed-control">
+                <label for="speed-select" data-i18n="speed">Speed</label>
+                <select id="speed-select">
+                  <option value="0.5" data-i18n="half_speed">0.5x</option>
+                  <option value="1" selected data-i18n="normal_speed">1x</option>
+                  <option value="2" data-i18n="double_speed">2x</option>
+                  <option value="4" data-i18n="quadruple_speed">4x</option>
+                </select>
+              </div>
+              <!-- クオンタイズ -->
+              <div class="quantization-control">
+                <label for="quantization-select" data-i18n="quantization">Quantization</label>
+                <select id="quantization-select">
+                  <option value="1" data-i18n="4th_note">1/4</option>
+                  <option value="0.5" data-i18n="8th_note" selected>1/8</option>
+                  <option value="0.25" data-i18n="16th_note">1/16</option>
+                  <option value="-1" data-i18n="no_quantization">None</option>
+                </select>
+              </div>
             </div>
             <!-- MIDIインポート -->
             <div class="import-midi">

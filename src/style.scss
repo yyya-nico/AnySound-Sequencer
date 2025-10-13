@@ -732,10 +732,9 @@ header {
 }
 
 .menu-content {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  align-items: center;
-  gap: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   position: absolute;
   right: 0;
   bottom: calc(100% - 2px);
@@ -744,18 +743,26 @@ header {
   visibility: hidden;
   transition: opacity 0.1s ease, visibility 0.1s ease;
   width: 280px;
-  padding: 10px;
+  padding: 6px;
   background: #2d2d2d;
   border: 1px solid #333;
   border-radius: 5px;
   box-shadow: 0 0 8px 0 #000000;
 }
 
-.speed-control,
-.quantization-control {
-  display: contents;
+.selects {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: 6px;
+
+  .speed-control,
+  .quantization-control {
+    display: contents;
+  }
 
   label {
+    margin-inline-start: 8px;
     color: #ccc;
     font-size: 14px;
   }
@@ -764,14 +771,14 @@ header {
 .import-midi,
 .export-midi,
 .clear-button {
-  text-align: center;
   grid-column: 1 / -1;
 
   button {
     width: 100%;
-    padding: 10px;
+    padding: 8px;
     font-size: 14px;
-    background-color: #3f3f3f;
+    background-color: transparent;
+    text-align: left;
 
     &:hover {
       background-color: #494949;
