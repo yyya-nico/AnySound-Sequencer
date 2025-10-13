@@ -49,8 +49,12 @@ const dispatchPointerPressEvent = (elem: HTMLElement) => {
   elem.addEventListener("pointercancel", onPointerUp);
 };
 
+const multipleFloor = (number: number, multiple: number) => {
+  return Math.floor(number / multiple) * multiple;
+}
+
 const minmax = (value: number, min: number, max: number) => {
   return Math.min(Math.max(value, min), max);
 }
 
-export { filenameToName, resetAnimation, dispatchPointerPressEvent, minmax };
+export { filenameToName, resetAnimation, dispatchPointerPressEvent, multipleFloor, minmax };

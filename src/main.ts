@@ -1,7 +1,7 @@
 import localForage from 'localforage';
 import i18next from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
-import { filenameToName, dispatchPointerPressEvent, resetAnimation, minmax } from './utils';
+import { filenameToName, dispatchPointerPressEvent, resetAnimation, multipleFloor, minmax } from './utils';
 
 import en from './locales/en.json';
 import ja from './locales/ja.json';
@@ -334,6 +334,10 @@ class Sequencer {
   private playedNotes: Set<string> = new Set();
   private pointerDowned: boolean = false;
   private autoScroll: boolean = true;
+  private selectedNotes: Set<string> = new Set();
+  private isRectangleSelecting: boolean = false;
+  private selectionStartX: number = 0;
+  private selectionStartY: number = 0;
 
   constructor() {
     this.audioManager = new AudioManager();
@@ -580,14 +584,19 @@ class Sequencer {
       const rect = pianoRoll.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
-      const pointerNotePosition = Math.floor(x / (this.quantization * 40)) * this.quantization; // 20px per 0.5 beat
+      let pointerNotePosition = null;
+      if (this.quantization < 0) {
+        pointerNotePosition = x / 40;
+      } else {
+        pointerNotePosition = multipleFloor(x / 40, this.quantization);
+      }
       const pointerNoteIndex = Math.floor(y / 20);
       const pointerMidiNote = 108 - pointerNoteIndex; // C8 at top
       const isPointerDown = e.type === 'pointerdown';
       if (isPointerDown) {
         firstPointer.notePos = pointerNotePosition;
         firstPointer.pitch = pointerMidiNote;
-        isResizing = x > target.offsetLeft + target.offsetWidth - 10;
+        isResizing = x > target.offsetLeft + target.offsetWidth - 5;
       }
       if (!isResizing && (firstPointer.notePos !== pointerNotePosition || firstPointer.pitch !== pointerMidiNote)) {
         shouldMove = true;
@@ -645,9 +654,26 @@ class Sequencer {
 
     pianoRoll.addEventListener('pointerdown', (e) => {
       if (!e.isPrimary || e.button !== 0) return; // 左クリックのみ
+      
+      // Altキーが押されている場合は矩形選択開始
+      if (e.altKey) {
+        this.startRectangleSelection(e, pianoRoll);
+        return;
+      }
+      this.selectedNotes.clear();
+      this.updateSelectedNotesVisual();
+      
       const target = e.target as HTMLElement;
       const trackNotes = this.getCurrentTrackNotes();
       currentNote = trackNotes.find(note => note.id === target.dataset.noteId) || null;
+      
+      // 選択されたノートがある場合は、それらを一緒に移動
+      if (currentNote && this.selectedNotes.has(currentNote.id)) {
+        this.startSelectedNotesMove(e, pianoRoll);
+        return;
+      }
+      
+      // 通常の単一ノート操作
       if (currentNote) {
         firstCurrent.notePos = currentNote.start;
         firstCurrent.pitch = currentNote.pitch;
@@ -664,13 +690,22 @@ class Sequencer {
 
     pianoRoll.addEventListener('pointermove', (e) => {
       if (!e.isPrimary || e.buttons !== 1) return; // 左クリックのみ
-      if (isDragging) {
+      
+      if (this.isRectangleSelecting) {
+        this.updateSelectionBox(e, pianoRoll);
+      } else if (isDragging) {
         handlePointerOperation(e);
       }
     });
 
     document.addEventListener('pointerup', (e) => {
       if (!e.isPrimary || e.button !== 0) return; // 左クリックのみ
+      
+      if (this.isRectangleSelecting) {
+        this.endRectangleSelection(pianoRoll);
+        return;
+      }
+      
       if (!isDragging) {
         return;
       }
@@ -808,7 +843,7 @@ class Sequencer {
         const rect = target.getBoundingClientRect();
         const x = pointerEvent.clientX - rect.left;
 
-        isResizable = x > rect.width - 10;
+        isResizable = x > rect.width - 5;
       } else {
         isResizable = false;
       }
@@ -823,7 +858,7 @@ class Sequencer {
         if (this.quantization < 0) {
           newNoteValue = Math.max(0, (originalWidth + deltaX) / 40);
         } else {
-          newNoteValue = Math.max(this.quantization, Math.round((originalWidth + deltaX) / (this.quantization * 40)) * this.quantization); // 20px per 0.5 beat
+          newNoteValue = Math.max(this.quantization, multipleFloor((originalWidth + deltaX) / 40, this.quantization));
         }
         currentNote.style.setProperty('--length', newNoteValue.toString());
 
@@ -1193,6 +1228,164 @@ class Sequencer {
     // Render notes for current track
     const trackNotes = this.getCurrentTrackNotes()
     trackNotes.forEach(note => this.renderNote(note));
+    
+    // 選択状態を復元
+    this.updateSelectedNotesVisual();
+  }
+
+  private startRectangleSelection(e: PointerEvent, pianoRoll: HTMLElement) {
+    this.isRectangleSelecting = true;
+    const rect = pianoRoll.getBoundingClientRect();
+    this.selectionStartX = e.clientX - rect.left;
+    this.selectionStartY = e.clientY - rect.top;
+    
+    // 既存の選択をクリア（Ctrlキーが押されていない場合）
+    if (!e.ctrlKey) {
+      this.selectedNotes.clear();
+      this.updateSelectedNotesVisual();
+    }
+    
+    // 選択矩形を作成
+    this.createSelectionBox(pianoRoll);
+  }
+
+  private createSelectionBox(pianoRoll: HTMLElement) {
+    // 既存の選択矩形を削除
+    const existingBox = pianoRoll.querySelector('.selection-box');
+    if (existingBox) {
+      existingBox.remove();
+    }
+    
+    const selectionBox = document.createElement('div');
+    selectionBox.className = 'selection-box';
+    selectionBox.style.position = 'absolute';
+    selectionBox.style.pointerEvents = 'none';
+    selectionBox.style.zIndex = '1000';
+    pianoRoll.appendChild(selectionBox);
+  }
+
+  private updateSelectionBox(e: PointerEvent, pianoRoll: HTMLElement) {
+    const rect = pianoRoll.getBoundingClientRect();
+    const currentX = e.clientX - rect.left;
+    const currentY = e.clientY - rect.top;
+    
+    const selectionBox = pianoRoll.querySelector('.selection-box') as HTMLElement;
+    if (!selectionBox) return;
+    
+    const left = Math.min(this.selectionStartX, currentX);
+    const top = Math.min(this.selectionStartY, currentY);
+    const width = Math.abs(currentX - this.selectionStartX);
+    const height = Math.abs(currentY - this.selectionStartY);
+    
+    selectionBox.style.left = `${left}px`;
+    selectionBox.style.top = `${top}px`;
+    selectionBox.style.width = `${width}px`;
+    selectionBox.style.height = `${height}px`;
+    
+    // 矩形内のノートを選択
+    this.selectNotesInRectangle(left, top, width, height);
+  }
+
+  private selectNotesInRectangle(left: number, top: number, width: number, height: number) {
+    const trackNotes = this.getCurrentTrackNotes();
+    const right = left + width;
+    const bottom = top + height;
+    
+    trackNotes.forEach(note => {
+      const noteElement = document.querySelector(`[data-note-id="${note.id}"]`) as HTMLElement;
+      if (!noteElement) return;
+      
+      const noteLeft = note.start * 40; // 1ビート = 40px
+      const noteTop = (108 - note.pitch) * 20; // 1音程 = 20px
+      const noteRight = noteLeft + note.length * 40;
+      const noteBottom = noteTop + 20;
+      
+      // 矩形との重なりをチェック
+      const overlaps = !(noteRight < left || noteLeft > right || noteBottom < top || noteTop > bottom);
+      
+      if (overlaps) {
+        this.selectedNotes.add(note.id);
+      }
+    });
+    
+    this.updateSelectedNotesVisual();
+  }
+
+  private updateSelectedNotesVisual() {
+    // 全ての選択状態をリセット
+    document.querySelectorAll('.note').forEach(noteElement => {
+      noteElement.classList.remove('selected');
+    });
+    
+    // 選択されたノートにクラスを追加
+    this.selectedNotes.forEach(noteId => {
+      const noteElement = document.querySelector(`[data-note-id="${noteId}"]`);
+      if (noteElement) {
+        noteElement.classList.add('selected');
+      }
+    });
+  }
+
+  private startSelectedNotesMove(e: PointerEvent, pianoRoll: HTMLElement) {
+    // 選択されたノートの初期位置を記録
+    const rect = pianoRoll.getBoundingClientRect();
+    const startX = e.clientX - rect.left;
+    const startY = e.clientY - rect.top;
+    
+    const selectedNotesData = new Map<string, {note: Note, initialStart: number, initialPitch: number}>();
+    this.selectedNotes.forEach(noteId => {
+      const trackNotes = this.getCurrentTrackNotes();
+      const note = trackNotes.find(n => n.id === noteId);
+      if (note) {
+        selectedNotesData.set(noteId, {
+          note,
+          initialStart: note.start,
+          initialPitch: note.pitch
+        });
+      }
+    });
+    
+    const moveHandler = (moveEvent: PointerEvent) => {
+      const currentRect = pianoRoll.getBoundingClientRect();
+      const currentX = moveEvent.clientX - currentRect.left;
+      const currentY = moveEvent.clientY - currentRect.top;
+      
+      const deltaX = currentX - startX;
+      const deltaY = currentY - startY;
+      
+      const deltaBeat = deltaX / 40; // 1ビート = 40px
+      const deltaPitch = -Math.round(deltaY / 20); // 1音程 = 20px, Y軸は反転
+      
+      selectedNotesData.forEach(({note, initialStart, initialPitch}) => {
+        let newStart = null;
+        if (this.quantization < 0) {
+          newStart = Math.max(0, initialStart + deltaBeat);
+        } else {
+          newStart = Math.max(0, multipleFloor(initialStart + deltaBeat, this.quantization));
+        }
+        const newPitch = Math.max(21, Math.min(108, initialPitch + deltaPitch));
+        
+        this.moveNote(note.id, newStart, newPitch);
+      });
+    };
+    
+    const upHandler = () => {
+      document.removeEventListener('pointermove', moveHandler);
+      document.removeEventListener('pointerup', upHandler);
+    };
+    
+    document.addEventListener('pointermove', moveHandler);
+    document.addEventListener('pointerup', upHandler);
+  }
+
+  private endRectangleSelection(pianoRoll: HTMLElement) {
+    this.isRectangleSelecting = false;
+    
+    // 選択矩形を削除
+    const selectionBox = pianoRoll.querySelector('.selection-box');
+    if (selectionBox) {
+      selectionBox.remove();
+    }
   }
 
   private getEndOfTrack(): number {

@@ -830,9 +830,15 @@ header {
   }
 
   &.selected {
-    background: #ffcc66;
-    border-color: #e6b84d;
+    background: #007acc;
+    color: #fff;
+    border: 2px solid #005a9e;
   }
+}
+
+.selection-box {
+  border: 1px dashed #007acc;
+  background-color: rgba(0, 122, 204, 0.1);
 }
 
 .beat {
