@@ -660,8 +660,6 @@ class Sequencer {
         this.startRectangleSelection(e, pianoRoll);
         return;
       }
-      this.selectedNotes.clear();
-      this.updateSelectedNotesVisual();
       
       const target = e.target as HTMLElement;
       const trackNotes = this.getCurrentTrackNotes();
@@ -672,6 +670,8 @@ class Sequencer {
         this.startSelectedNotesMove(e, pianoRoll);
         return;
       }
+      this.selectedNotes.clear();
+      this.updateSelectedNotesVisual();
       
       // 通常の単一ノート操作
       if (currentNote) {
