@@ -1389,7 +1389,8 @@ class Sequencer {
   }
 
   private getEndOfTrack(): number {
-    return Array.from(this.notes.values()).flat().map(n => n.start + n.length).reduce((a, b) => Math.max(a, b), 0);
+    return Array.from(this.notes.values()).flat().map(n => n.start + n.length)
+      .concat(this.beats.map(b => b.position + 1)).reduce((a, b) => Math.max(a, b), 0);
   }
 
   private positionToSec(beat: number): number {
