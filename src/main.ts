@@ -343,7 +343,7 @@ class Sequencer {
     this.audioManager = new AudioManager();
 
     // Initialize tracks
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 16; i++) {
       this.notes.set(i.toString(), []);
     }
 
@@ -1058,7 +1058,7 @@ class Sequencer {
   }
 
   private switchToNextTrack(direction: number) {
-    const trackCount = 4;
+    const trackCount = 16;
     if (this.currentTrack + direction < 0 || this.currentTrack + direction >= trackCount) {
       return;
     }
