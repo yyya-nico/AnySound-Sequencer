@@ -1205,7 +1205,7 @@ class Sequencer {
     if (loopToggle) loopToggle.checked = true;
     const soundButtonsContainers = document.querySelectorAll('.sound');
     soundButtonsContainers.forEach(container => {
-      const soundBtn = container.querySelector('.sound-button') as HTMLButtonElement;
+      const soundBtn = container.querySelector('.sound-btn') as HTMLButtonElement;
       const sineBtn = container.querySelector('.sine-btn') as HTMLButtonElement;
       if (soundBtn) {
         soundBtn.dataset.i18n = 'select_sound_source_file';
