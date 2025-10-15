@@ -77,6 +77,7 @@ function changeLanguage(lang: string) {
 // Types and Interfaces
 interface Note {
   id: string;
+  track: number; // melody track number
   pitch: number; // MIDI note number (0-127)
   start: number; // beat position
   length: number; // length in beats
@@ -91,7 +92,9 @@ interface Beat {
 }
 
 interface Files {
-  [key: string]: File | null;
+  melody: Map<number, File>; // track -> file
+  beat1: File | null;
+  beat2: File | null;
 }
 
 interface AudioSample {
@@ -103,8 +106,8 @@ interface AudioSample {
 class AudioManager {
   private context: AudioContext;
   private masterGain: GainNode;
-  private melodySamples: Map<number, AudioSample> = new Map();
-  private melodyPitchShift: number = 0;
+  private melodySamples: Map<number, Map<number, AudioSample>> = new Map();
+  private melodyPitchShifts: Map<number, number> = new Map();
   private beatSamples: Map<number, AudioSample> = new Map();
   private previewSources: Map<string, { source: AudioBufferSourceNode; gain: GainNode }> = new Map();
 
@@ -120,8 +123,11 @@ class AudioManager {
 
   private initializeSineWaves() {
     // Initialize melody sine waves for MIDI notes 21-108 (A0-C8)
-    for (let note = 21; note <= 108; note++) {
-      this.melodySamples.set(note, { buffer: null, type: 'sine' });
+    for (let track = 0; track < 16; track++) {
+      this.melodySamples.set(track, new Map());
+      for (let note = 21; note <= 108; note++) {
+        this.melodySamples.get(track)?.set(note, { buffer: null, type: 'sine' });
+      }
     }
 
     // Initialize beat sine waves
@@ -155,23 +161,23 @@ class AudioManager {
     return this.context.decodeAudioData(arrayBuffer);
   }
 
-  setMelodySample(file: File | null) {
+  setMelodySample(track: number, file: File | null) {
     if (file) {
       this.loadAudioFile(file).then(buffer => {
         for (let note = 21; note <= 108; note++) {
-          this.melodySamples.set(note, { buffer, type: 'file' });
+          this.melodySamples.get(track)?.set(note, { buffer, type: 'file' });
         }
       });
     } else {
       // Reset to sine wave
       for (let note = 21; note <= 108; note++) {
-        this.melodySamples.set(note, { buffer: null, type: 'sine' });
+        this.melodySamples.get(track)?.set(note, { buffer: null, type: 'sine' });
       }
     }
   }
 
-  setMelodyPitchShift(pitchShift: number) {
-    this.melodyPitchShift = pitchShift;
+  setMelodyPitchShift(track: number, pitchShift: number) {
+    this.melodyPitchShifts.set(track, pitchShift);
   }
 
   setBeatSample(track: number, file: File | null) {
@@ -208,7 +214,7 @@ class AudioManager {
   }
 
   playNote(note: Note, bpm: number, when: number = 0) {
-    const sample = this.melodySamples.get(note.pitch);
+    const sample = this.melodySamples.get(note.track)?.get(note.pitch);
     if (!sample) return;
 
     const source = this.context.createBufferSource();
@@ -221,7 +227,7 @@ class AudioManager {
       source.buffer = this.createSineWave(frequency, durationInSeconds);
     } else {
       source.buffer = sample.buffer;
-      source.playbackRate.value = this.midiToPercentage(note.pitch, this.melodyPitchShift);
+      source.playbackRate.value = this.midiToPercentage(note.pitch, this.melodyPitchShifts.get(note.track) || 0);
     }
 
     gain.gain.value = (note.velocity / 127) * 0.5;
@@ -242,7 +248,7 @@ class AudioManager {
     // 前のプレビュー音を停止
     this.stopPreview(previewId);
 
-    const sample = this.melodySamples.get(note.pitch);
+    const sample = this.melodySamples.get(note.track)?.get(note.pitch);
     if (!sample) return;
 
     const source = this.context.createBufferSource();
@@ -255,7 +261,7 @@ class AudioManager {
       source.buffer = this.createSineWave(frequency, durationInSeconds);
     } else {
       source.buffer = sample.buffer;
-      source.playbackRate.value = this.midiToPercentage(note.pitch, this.melodyPitchShift);
+      source.playbackRate.value = this.midiToPercentage(note.pitch, this.melodyPitchShifts.get(note.track) || 0);
     }
 
     // フェードインで開始
@@ -312,13 +318,10 @@ class AudioManager {
 // Sequencer Class
 class Sequencer {
   private audioManager: AudioManager;
-  private notes: Map<string, Note[]> = new Map(); // track -> notes
+  private notes: Note[] = [];
   private beats: Beat[] = [];
-  private files: Files = {
-    melody: null,
-    beat1: null,
-    beat2: null,
-  };
+  private files: Files = { melody: new Map(), beat1: null, beat2: null };
+  private pitchShifts: Map<number, number> = new Map(); // track -> pitch shift
   private currentTrack: number = 0;
   private bpm: number = 120;
   private playbackSpeed: number = 1; // 0.5x, 1x, 2x
@@ -342,11 +345,6 @@ class Sequencer {
 
   constructor() {
     this.audioManager = new AudioManager();
-
-    // Initialize tracks
-    for (let i = 0; i < 16; i++) {
-      this.notes.set(i.toString(), []);
-    }
 
     this.setupEventListeners();
     this.initializePianoRoll();
@@ -467,59 +465,76 @@ class Sequencer {
     });
 
     // Audio file inputs
+    const soundButtonsContainers = document.querySelectorAll('.sound');
     const pitchShiftLabel = document.querySelector('.pitch-shift-label') as HTMLElement;
-    ['melody', 'beat1', 'beat2'].forEach(track => {
-      const fileInput = document.getElementById(`${track}-sound-input`) as HTMLInputElement;
-      const fileText = document.querySelector(`#${track}-sound-input + .file-text`) as HTMLElement;
-      const sineButton = document.getElementById(`back-to-sine-${track}`) as HTMLButtonElement;
-      
-      fileInput.addEventListener('change', () => {
-        if (fileInput.files?.[0]) {
-          this.files[track] = fileInput.files[0];
-          fileText.dataset.i18n = '';
-          fileText.textContent = filenameToName(this.files[track]!.name);
-          
-          // 正弦波ボタンを表示
-          sineButton.hidden = false;
-          
-          if (track === 'melody') {
-            pitchShiftLabel.hidden = false;
-            this.audioManager.setMelodySample(this.files.melody);
-          } else if (track === 'beat1') {
-            this.audioManager.setBeatSample(0, this.files.beat1);
-          } else if (track === 'beat2') {
-            this.audioManager.setBeatSample(1, this.files.beat2);
-          }
+    soundButtonsContainers.forEach(container => {
+      const track = (container as HTMLElement).dataset.track;
+      const soundBtn = container.querySelector('.sound-btn') as HTMLButtonElement;
+      const sineBtn = container.querySelector('.sine-btn') as HTMLButtonElement;
+      container.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement;
+        const selectAudioFile = () => {
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.accept = 'audio/*';
+          const promise = new Promise<File | null>((resolve) => {
+            input.onchange = (event) => {
+              const file = (event.target as HTMLInputElement).files?.[0] || null;
+              if (!file) {
+                resolve(null);
+              }
+              resolve(file);
+            };
+          });
+          input.click();
+          return promise;
         }
-      });
-
-      sineButton?.addEventListener('click', () => {
-        this.files[track] = null;
-        fileInput.value = '';
-        fileText.dataset.i18n = 'select_sound_source_file';
-        fileText.textContent = i18next.t('select_sound_source_file');
-        
-        // 正弦波ボタンを非表示
-        sineButton.hidden = true;
-        
-        if (track === 'melody') {
-          pitchShiftLabel.hidden = true;
-          this.audioManager.setMelodySample(null);
-        } else if (track === 'beat1') {
-          this.audioManager.setBeatSample(0, null);
-        } else if (track === 'beat2') {
-          this.audioManager.setBeatSample(1, null);
+        if (target === soundBtn) {
+          selectAudioFile().then(file => {
+            if (!file) return;
+            soundBtn.dataset.i18n = '';
+            soundBtn.innerText = filenameToName(file.name);
+            sineBtn.hidden = false;
+            if (track === 'melody') {
+              pitchShiftLabel.hidden = false;
+              this.files.melody.set(this.currentTrack, file);
+              this.audioManager.setMelodySample(this.currentTrack, file);
+            } else if (track === 'beat1') {
+              this.files.beat1 = file;
+              this.audioManager.setBeatSample(0, file);
+            } else if (track === 'beat2') {
+              this.files.beat2 = file;
+              this.audioManager.setBeatSample(1, file);
+            }
+          });
+        } else if (target === sineBtn) {
+          soundBtn.dataset.i18n = 'select_sound_source_file';
+          soundBtn.innerText = i18next.t('select_sound_source_file');
+          sineBtn.hidden = true;
+          if (track === 'melody') {
+            pitchShiftLabel.hidden = true;
+            this.files.melody.delete(this.currentTrack);
+            this.audioManager.setMelodySample(this.currentTrack, null);
+          } else if (track === 'beat1') {
+            this.files.beat1 = null;
+            this.audioManager.setBeatSample(0, null);
+          } else if (track === 'beat2') {
+            this.files.beat2 = null;
+            this.audioManager.setBeatSample(1, null);
+          }
         }
       });
     });
 
     document.getElementById('melody-pitch-shift')?.addEventListener('input', (e) => {
       const pitchShift = (e.target as HTMLInputElement).valueAsNumber || 0;
-      this.audioManager.setMelodyPitchShift(pitchShift);
+      this.pitchShifts.set(this.currentTrack, pitchShift);
+      this.audioManager.setMelodyPitchShift(this.currentTrack, pitchShift);
 
       const noteId = `preview-pitch-shift-${Date.now()}`
       const note: Note = {
         id: noteId,
+        track: this.currentTrack,
         pitch: 60, // C4にピッチシフトが反映される
         start: 0,
         length: this.defaultNoteLength,
@@ -618,7 +633,7 @@ class Sequencer {
       }
 
       // Prevent adding if note already exists at this pitch
-      const trackNotes = this.getCurrentTrackNotes();
+      let trackNotes = this.getCurrentTrackNotes();
       const basisNotePosition = currentNote ? pointerNotePosition - (firstPointer.notePos - firstCurrent.notePos) : pointerNotePosition;
       const basisNoteLength = currentNote ? currentNote.length : this.defaultNoteLength;
       const exists = trackNotes.some(
@@ -643,6 +658,7 @@ class Sequencer {
         }
       } else {
         const id = this.addNote(pointerMidiNote, pointerNotePosition, this.defaultNoteLength);
+        trackNotes = this.getCurrentTrackNotes();
         currentNote = trackNotes.find(n => n.id === id)!;
         firstCurrent.notePos = currentNote.start;
         firstCurrent.pitch = currentNote.pitch;
@@ -768,12 +784,10 @@ class Sequencer {
         this.currentBeat = newBeat;
 
         // Play notes at current beat
-        this.notes.forEach(trackNotes => {
-          trackNotes.forEach(note => {
-            if (note.start <= this.currentBeat && note.start + 0.1 > this.currentBeat && !this.playedNotes.has(note.id)) {
-              this.audioManager.playNote(note, this.bpm * this.playbackSpeed);
-            }
-          });
+        this.notes.forEach(note => {
+          if (note.start <= this.currentBeat && note.start + 0.1 > this.currentBeat && !this.playedNotes.has(note.id)) {
+            this.audioManager.playNote(note, this.bpm * this.playbackSpeed);
+          }
         });
 
         // Play beats at current beat
@@ -947,17 +961,19 @@ class Sequencer {
     });
 
     // Load saved data
-    const savedNotes = await localForage.getItem<{ [key: string]: Note[] }>('notes');
+    const savedNotes = await localForage.getItem<Note[]>('notes');
     const savedBeats = await localForage.getItem<Beat[]>('beats');
     const savedBpm = await localForage.getItem<number>('bpm');
     const savedPlaybackSpeed = await localForage.getItem<number>('playbackSpeed');
     const savedQuantization = await localForage.getItem<number>('quantization');
     const savedAudioFiles = await localForage.getItem<Files>('audioFiles');
-    const savedMelodyPitchShift = await localForage.getItem<number>('melodyPitchShift');
+    const savedMelodyPitchShifts = await localForage.getItem<Map<number, number>>('melodyPitchShifts');
 
     if (savedNotes) {
-      Object.keys(savedNotes).forEach(track => {
-        this.notes.set(track, savedNotes[track]);
+      this.notes = savedNotes;
+      // Render notes
+      this.notes.forEach(note => {
+        this.renderNote(note);
       });
     }
 
@@ -991,38 +1007,45 @@ class Sequencer {
 
     if (savedAudioFiles) {
       this.files = savedAudioFiles;
-      if (this.files.melody) {
-        const fileText = document.querySelector('#melody-sound-input + .file-text') as HTMLElement;
-        const sineButton = document.getElementById('back-to-sine-melody') as HTMLButtonElement;
-        const pitchShiftLabel = document.querySelector('.pitch-shift-label') as HTMLElement;
-        fileText.dataset.i18n = '';
-        fileText.textContent = filenameToName(this.files.melody.name);
-        sineButton.hidden = false;
-        pitchShiftLabel.hidden = false;
-        this.audioManager.setMelodySample(this.files.melody);
-      }
-      if (this.files.beat1) {
-        const fileText = document.querySelector('#beat1-sound-input + .file-text') as HTMLElement;
-        const sineButton = document.getElementById('back-to-sine-beat1') as HTMLButtonElement;
-        fileText.dataset.i18n = '';
-        fileText.textContent = filenameToName(this.files.beat1.name);
-        sineButton.hidden = false;
-        this.audioManager.setBeatSample(0, this.files.beat1);
-      }
-      if (this.files.beat2) {
-        const fileText = document.querySelector('#beat2-sound-input + .file-text') as HTMLElement;
-        const sineButton = document.getElementById('back-to-sine-beat2') as HTMLButtonElement;
-        fileText.dataset.i18n = '';
-        fileText.textContent = filenameToName(this.files.beat2.name);
-        sineButton.hidden = false;
-        this.audioManager.setBeatSample(1, this.files.beat2);
-      }
+      const soundButtonsContainers = document.querySelectorAll('.sound');
+      const pitchShiftLabel = document.querySelector('.pitch-shift-label') as HTMLElement;
+      soundButtonsContainers.forEach(container => {
+        const track = (container as HTMLElement).dataset.track;
+        const file = (() => {
+          if (track === 'melody') {
+            return this.files.melody.get(this.currentTrack) || null;
+          } else if (track === 'beat1') {
+            return this.files.beat1;
+          } else if (track === 'beat2') {
+            return this.files.beat2;
+          }
+          return null;
+        })();
+        const soundBtn = container.querySelector('.sound-button') as HTMLButtonElement;
+        const sineBtn = container.querySelector('.sine-btn') as HTMLButtonElement;
+        if (soundBtn) {
+          soundBtn.dataset.i18n = '';
+          soundBtn.innerText = filenameToName(file?.name || '');
+          if (track === 'melody') {
+            pitchShiftLabel.hidden = !file;
+            this.audioManager.setMelodySample(this.currentTrack, file);
+          } else if (track === 'beat1') {
+            this.audioManager.setBeatSample(0, file);
+          } else if (track === 'beat2') {
+            this.audioManager.setBeatSample(1, file);
+          }
+        }
+        if (sineBtn) sineBtn.hidden = true;
+      });
     }
 
-    if (savedMelodyPitchShift !== null && !isNaN(savedMelodyPitchShift)) {
-      this.audioManager.setMelodyPitchShift(savedMelodyPitchShift);
+    if (savedMelodyPitchShifts) {
+      this.pitchShifts = savedMelodyPitchShifts;
+      this.pitchShifts.forEach((pitchShift, track) => {
+        this.audioManager.setMelodyPitchShift(track, pitchShift);
+      });
       const pitchShiftInput = document.getElementById('melody-pitch-shift') as HTMLInputElement;
-      if (pitchShiftInput) pitchShiftInput.valueAsNumber = savedMelodyPitchShift;
+      if (pitchShiftInput) pitchShiftInput.valueAsNumber = this.pitchShifts.get(this.currentTrack) || 0;
     }
 
     this.renderCurrentTrack();
@@ -1051,20 +1074,13 @@ class Sequencer {
   }
 
   private saveData() {
-    const notesToSave: { [key: string]: Note[] } = {};
-    this.notes.forEach((trackNotes, track) => {
-      notesToSave[track] = trackNotes;
-    });
-
-    localForage.setItem('notes', notesToSave);
+    localForage.setItem('notes', this.notes);
     localForage.setItem('beats', this.beats);
     localForage.setItem('bpm', this.bpm);
     localForage.setItem('playbackSpeed', this.playbackSpeed);
     localForage.setItem('quantization', this.quantization);
     localForage.setItem('audioFiles', this.files);
-
-    const melodyPitchShift = (document.getElementById('melody-pitch-shift') as HTMLInputElement).valueAsNumber;
-    localForage.setItem('melodyPitchShift', melodyPitchShift);
+    localForage.setItem('melodyPitchShifts', this.pitchShifts);
   }
 
   private switchToNextTrack(direction: number) {
@@ -1081,15 +1097,35 @@ class Sequencer {
       resetAnimation(pianoRollSection, 'notify');
     }
 
+    const file = this.files.melody.get(this.currentTrack) || null;
+    const melodySoundButtonsContainer = document.querySelector('.sound[data-track="melody"]') as HTMLElement;
+    const pitchShiftLabel = document.querySelector('.pitch-shift-label') as HTMLElement;
+    const soundBtn = melodySoundButtonsContainer.querySelector('.sound-btn') as HTMLButtonElement;
+    const sineBtn = melodySoundButtonsContainer.querySelector('.sine-btn') as HTMLButtonElement;
+    if (file) {
+      soundBtn.dataset.i18n = '';
+      soundBtn.innerText = filenameToName(file?.name || '');
+      sineBtn.hidden = false;
+      pitchShiftLabel.hidden = false;
+    } else {
+      soundBtn.dataset.i18n = 'select_sound_source_file';
+      soundBtn.innerText = i18next.t('select_sound_source_file');
+      sineBtn.hidden = true;
+      pitchShiftLabel.hidden = true;
+    }
+
+    const pitchShiftInput = document.getElementById('melody-pitch-shift') as HTMLInputElement;
+    if (pitchShiftInput) pitchShiftInput.valueAsNumber = this.pitchShifts.get(this.currentTrack) || 0;
     this.renderCurrentTrack();
   }
 
   private getCurrentTrackNotes(): Note[] {
-    return this.notes.get(this.currentTrack.toString()) || [];
+    return this.notes.filter(note => note.track === this.currentTrack);
   }
 
   private setCurrentTrackNotes(notes: Note[]) {
-    this.notes.set(this.currentTrack.toString(), notes);
+    this.notes = this.notes.filter(note => note.track !== this.currentTrack);
+    this.notes.push(...notes);
   }
 
   private addNote(pitch: number, start: number, length: number) {
@@ -1098,6 +1134,7 @@ class Sequencer {
 
     const note: Note = {
       id: noteId,
+      track: this.currentTrack,
       pitch,
       start,
       length,
@@ -1137,19 +1174,19 @@ class Sequencer {
 
   private clearAll() {
     this.stop();
-    this.notes.forEach((_, track) => {
-      this.notes.set(track, []);
-    });
+    this.notes = [];
     this.beats = [];
     this.bpm = 120;
     this.playbackSpeed = 1;
     this.files = {
-      melody: null,
+      melody: new Map<number, File>(),
       beat1: null,
       beat2: null
     };
-    this.audioManager.setMelodySample(null);
-    this.audioManager.setMelodyPitchShift(0);
+    for (let i = 0; i < 16; i++) {
+      this.audioManager.setMelodySample(i, null);
+      this.audioManager.setMelodyPitchShift(i, 0);
+    }
     this.audioManager.setBeatSample(0, null);
     this.audioManager.setBeatSample(1, null);
 
@@ -1166,16 +1203,15 @@ class Sequencer {
     if (speedSelect) speedSelect.value = this.playbackSpeed.toString();
     const loopToggle = document.getElementById('loop-toggle') as HTMLInputElement;
     if (loopToggle) loopToggle.checked = true;
-    ['melody', 'beat1', 'beat2'].forEach(track => {
-      const soundInput = document.getElementById(`${track}-sound-input`) as HTMLInputElement;
-      if (soundInput) {
-        soundInput.value = '';
-        const fileText = document.querySelector(`#${track}-sound-input + .file-text`) as HTMLElement;
-        fileText.dataset.i18n = 'select_sound_source_file';
-        fileText.textContent = i18next.t('select_sound_source_file');
-        const sineButton = document.getElementById(`back-to-sine-${track}`) as HTMLButtonElement;
-        if (sineButton) sineButton.hidden = true;
+    const soundButtonsContainers = document.querySelectorAll('.sound');
+    soundButtonsContainers.forEach(container => {
+      const soundBtn = container.querySelector('.sound-button') as HTMLButtonElement;
+      const sineBtn = container.querySelector('.sine-btn') as HTMLButtonElement;
+      if (soundBtn) {
+        soundBtn.dataset.i18n = 'select_sound_source_file';
+        soundBtn.innerText = i18next.t('select_sound_source_file');
       }
+      if (sineBtn) sineBtn.hidden = true;
     });
     const pitchShiftLabel = document.querySelector('.pitch-shift-label') as HTMLElement;
     if (pitchShiftLabel) pitchShiftLabel.hidden = true;
@@ -1186,11 +1222,13 @@ class Sequencer {
   }
 
   private renderNote(note: Note) {
+    if (note.track !== this.currentTrack) return; // 現在のトラックのノートのみ描画
     const pianoRoll = document.querySelector('.piano-roll-grid');
     if (!pianoRoll) return;
 
     const noteElement = document.createElement('div');
-    noteElement.className = 'note';
+    noteElement.classList.add('note');
+    noteElement.classList.add(`note-${note.track + 1}`);
     noteElement.dataset.noteId = note.id;
     this.updateNoteMeta(noteElement, note);
 
@@ -1505,13 +1543,11 @@ class Sequencer {
       this.currentBeat = this.lastBpmChangeBeat + beatsSinceLastBpmChange;
 
       // Play notes at current beat
-      this.notes.forEach(trackNotes => {
-        trackNotes.forEach(note => {
-          if (note.start <= this.currentBeat && note.start + 0.1 > this.currentBeat && !this.playedNotes.has(note.id)) {
-            this.audioManager.playNote(note, this.bpm * this.playbackSpeed);
-            this.playedNotes.add(note.id);
-          }
-        });
+      this.notes.forEach(note => {
+        if (note.start <= this.currentBeat && note.start + 0.1 > this.currentBeat && !this.playedNotes.has(note.id)) {
+          this.audioManager.playNote(note, this.bpm * this.playbackSpeed);
+          this.playedNotes.add(note.id);
+        }
       });
 
       // Play beats at current beat
@@ -1601,13 +1637,11 @@ class Sequencer {
         
         // Clear existing data
         this.stop();
-        this.notes.clear();
+        this.notes = [];
         this.beats = [];
         
         // Load converted data
-        sequencerData.notes.forEach((trackNotes, trackIndex) => {
-          this.notes.set(trackIndex, trackNotes);
-        });
+        this.notes = sequencerData.notes;
         this.beats = sequencerData.beats;
         this.bpm = sequencerData.bpm;
         

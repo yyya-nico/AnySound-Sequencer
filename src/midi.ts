@@ -321,7 +321,7 @@ export class MidiWriter {
 export class MidiConverter {
   // Convert your sequencer data to MIDI format
   static sequencerToMidi(
-    notes: Map<string, Array<{id: string; pitch: number; start: number; length: number; velocity: number}>>,
+    notes: Array<{id: string; track: number; pitch: number; start: number; length: number; velocity: number}>,
     beats: Array<{id: string; track: number; position: number; velocity: number}>,
     bpm: number = 120,
     ticksPerQuarter: number = 480
@@ -355,20 +355,18 @@ export class MidiConverter {
     midiFile.tracks.push(tempoTrack);
 
     // Convert note tracks
-    notes.forEach((trackNotes, trackIndex) => {
-      if (trackNotes.length === 0) return;
-
+    if (notes.length > 0) {
       const events: MidiEvent[] = [];
       
       // Convert notes to MIDI events
-      for (const note of trackNotes) {
+      for (const note of notes) {
         const startTicks = Math.round(note.start * ticksPerBeat);
         const endTicks = Math.round((note.start + note.length) * ticksPerBeat);
         
         events.push({
           deltaTime: startTicks,
           type: 'noteOn',
-          channel: parseInt(trackIndex),
+          channel: note.track,
           note: note.pitch,
           velocity: note.velocity
         });
@@ -376,7 +374,7 @@ export class MidiConverter {
         events.push({
           deltaTime: endTicks,
           type: 'noteOff',
-          channel: parseInt(trackIndex),
+          channel: note.track,
           note: note.pitch,
           velocity: 0
         });
@@ -401,7 +399,7 @@ export class MidiConverter {
       });
 
       midiFile.tracks.push({ events });
-    });
+    }
 
     // Convert beat tracks to percussion (channel 9)
     if (beats.length > 0) {
@@ -455,11 +453,11 @@ export class MidiConverter {
 
   // Convert MIDI format to your sequencer data
   static midiToSequencer(midiFile: MidiFile, bpm: number = 120): {
-    notes: Map<string, Array<{id: string; pitch: number; start: number; length: number; velocity: number}>>;
+    notes: Array<{id: string; track: number; pitch: number; start: number; length: number; velocity: number}>;
     beats: Array<{id: string; track: number; position: number; velocity: number}>;
     bpm: number;
   } {
-    const notes = new Map<string, Array<{id: string; pitch: number; start: number; length: number; velocity: number}>>();
+    const notes: Array<{id: string; track: number; pitch: number; start: number; length: number; velocity: number}> = [];
     const beats: Array<{id: string; track: number; position: number; velocity: number}> = [];
     
     const ticksPerBeat = midiFile.ticksPerQuarter;
@@ -499,15 +497,14 @@ export class MidiConverter {
               });
             } else {
               // Regular note
-              const currentNotes = notes.get(noteInfo.channel.toString()) || [];
-              currentNotes.push({
+              notes.push({
                 id: `note-${Date.now()}-${Math.random()}`,
+                track: noteInfo.channel,
                 pitch: event.note,
                 start: noteInfo.start,
                 length,
                 velocity: noteInfo.velocity
               });
-              notes.set(noteInfo.channel.toString(), currentNotes);
             }
             
             activeNotes.delete(event.note);

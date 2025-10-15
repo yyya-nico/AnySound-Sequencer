@@ -22,12 +22,11 @@
       <div class="sequencer-container">
         <!-- ピアノロールエリア -->
         <div class="piano-roll-section">
-          <div class="melody-sound">
-            <label class="file-label" for="melody-sound-input">
-              <input type="file" id="melody-sound-input" accept="audio/*">
-              <span class="file-text" data-i18n="select_sound_source_file">Select Sound Source File</span>
-            </label>
-            <button id="back-to-sine-melody" data-i18n="back_to_sine_wave" hidden>Back to Sine Wave</button>
+          <div class="sound" data-track="melody">
+            <button class="sound-btn" data-i18n="select_sound_source_file">
+              Select Sound Source File
+            </button>
+            <button class="sine-btn" data-i18n="back_to_sine_wave" hidden>Back to Sine Wave</button>
             <label class="pitch-shift-label" for="melody-pitch-shift" hidden>
               <span data-i18n="pitch_shift">Pitch Shift</span>
               <input type="number" id="melody-pitch-shift">
@@ -50,22 +49,20 @@
         <div class="rhythm-section">
           <div class="rhythm-tracks">
             <div class="rhythm-track" data-track="0">
-              <div class="beat1-sound">
-                <label class="file-label" for="beat1-sound-input">
-                  <input type="file" id="beat1-sound-input" accept="audio/*">
-                  <span class="file-text" data-i18n="select_sound_source_file">Select Sound Source File</span>
-                </label>
-                <button id="back-to-sine-beat1" data-i18n="back_to_sine_wave" hidden>Back to Sine Wave</button>
+              <div class="sound" data-track="beat1">
+                <button class="sound-btn" data-i18n="select_sound_source_file">
+                  Select Sound Source File
+                </button>
+                <button  class="sine-btn" data-i18n="back_to_sine_wave" hidden>Back to Sine Wave</button>
               </div>
               <div class="rhythm-grid"></div>
             </div>
             <div class="rhythm-track" data-track="1">
-              <div class="beat2-sound">
-                <label class="file-label" for="beat2-sound-input">
-                  <input type="file" id="beat2-sound-input" accept="audio/*">
-                  <span class="file-text" data-i18n="select_sound_source_file">Select Sound Source File</span>
-                </label>
-                <button id="back-to-sine-beat2" data-i18n="back_to_sine_wave" hidden>Back to Sine Wave</button>
+              <div class="sound" data-track="beat2">
+                <button class="sound-btn" data-i18n="select_sound_source_file">
+                  Select Sound Source File
+                </button>
+                <button class="sine-btn" data-i18n="back_to_sine_wave" hidden>Back to Sine Wave</button>
               </div>
               <div class="rhythm-grid"></div>
             </div>

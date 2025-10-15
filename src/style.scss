@@ -377,9 +377,7 @@ header {
   }
 }
 
-.melody-sound,
-.beat1-sound,
-.beat2-sound {
+.sound {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -389,11 +387,7 @@ header {
   width: var(--sound-panel-width);
   padding: 10px;
 
-  input[type="file"] {
-    display: none;
-  }
-
-  .file-label {
+  .sound-btn {
     display: grid;
     place-items: center;
     height: 100%;
@@ -420,7 +414,7 @@ header {
     }
   }
 
-  button {
+  .sine-btn {
     padding: 6px 12px;
     font-size: 12px;
   }
