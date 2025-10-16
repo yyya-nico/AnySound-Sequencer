@@ -880,7 +880,7 @@ class Sequencer {
         const deltaX = pointerEvent.clientX - startX;
         let newNoteValue = null;
         if (this.quantization < 0) {
-          newNoteValue = Math.max(0, (originalWidth + deltaX) / 40);
+          newNoteValue = Math.max(0.1, (originalWidth + deltaX) / 40);
         } else {
           newNoteValue = Math.max(this.quantization, multipleFloor((originalWidth + deltaX) / 40, this.quantization));
         }
