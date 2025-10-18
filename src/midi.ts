@@ -142,6 +142,13 @@ export class MidiParser {
         event.type = 'programChange';
         event.channel = status & 0x0F;
         event.program = data[pos++];
+      } else if (status === 0xF0 || status === 0xF7) {
+        // SysEx Event
+        event.type = 'sysex';
+        const length = this.readVariableLength(data, pos);
+        pos += length.bytesRead;
+        event.data = data.slice(pos, pos + length.value);
+        pos += length.value;
       } else {
         // Skip unknown events
         console.warn(`Unknown MIDI event: 0x${status.toString(16)}`);
