@@ -1,4 +1,5 @@
 @charset "UTF-8";
+@use "sass:map";
 @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap");
 
 @mixin touch-device {
@@ -798,6 +799,9 @@ header {
 }
 
 .note {
+  $previous-background: #ffd166;
+  $previous-border: #d9b14d;
+
   display: flex;
   align-items: center;
   position: absolute;
@@ -828,14 +832,70 @@ header {
     background: #ffffff3f;
   }
 
-  &:hover {
-    background: #7dd3ff;
+  // アクティブなトラックのノート
+  &.active {
+    cursor: pointer;
+
+    &:hover {
+      background: #7dd3ff;
+    }
+
+    &.selected {
+      background: #007acc;
+      color: #fff;
+      border: 2px solid #005a9e;
+    }
   }
 
-  &.selected {
-    background: #007acc;
-    color: #fff;
-    border: 2px solid #005a9e;
+  // 非アクティブなトラックのノート
+  &.inactive {
+    cursor: default;
+    pointer-events: none;
+
+    &::after {
+      display: none;
+    }
+  }
+
+  // opacity variables
+  $note-opacity: (
+    1: 0.6,
+    2: 0.571428571,
+    3: 0.542857143,
+    4: 0.514285714,
+    5: 0.485714286,
+    6: 0.457142857,
+    7: 0.428571429,
+    8: 0.4,
+    9: 0.371428571,
+    10: 0.342857143,
+    11: 0.314285714,
+    12: 0.285714286,
+    13: 0.257142857,
+    14: 0.228571429,
+    15: 0.2,
+  );
+
+  @at-root .piano-roll-section {
+    @for $current-track from 0 through 15 {
+      &[data-track="#{$current-track}"] {
+        @for $track from 0 through 15 {
+          @if $track != $current-track {
+            .note-track-#{$track} {
+              @if $track < $current-track {
+                // 前のトラック（過去のトラック）
+                opacity: map.get($note-opacity, $current-track - $track);
+                background: $previous-background;
+                border-color: $previous-border;
+              } @else {
+                // 後のトラック（未来のトラック）
+                opacity: map.get($note-opacity, $track - $current-track);
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }
 

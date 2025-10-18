@@ -689,6 +689,12 @@ class Sequencer {
       
       const target = e.target as HTMLElement;
       const trackNotes = this.getCurrentTrackNotes();
+      
+      // 現在のトラック以外のノートは操作不可
+      if (target.classList.contains('note') && target.classList.contains('inactive')) {
+        return;
+      }
+      
       currentNote = trackNotes.find(note => note.id === target.dataset.noteId) || null;
       
       // 選択されたノートがある場合は、それらを一緒に移動
@@ -742,7 +748,8 @@ class Sequencer {
     const removeNoteByEvent = (e: MouseEvent | CustomEvent) => {
       const target = (e?.detail?.originalTarget as HTMLElement) || (e.target as HTMLElement);
       const noteId = target.dataset.noteId || null;
-      if (noteId) {
+      // 非アクティブなノートは削除できない
+      if (noteId && !target.classList.contains('inactive')) {
         this.removeNote(noteId);
       }
     };
@@ -848,7 +855,7 @@ class Sequencer {
     pianoRoll.addEventListener('pointerdown', (e: Event) => {
       const pointerEvent = e as PointerEvent;
       const target = e.target as HTMLElement;
-      if (target.classList.contains('note')) {
+      if (target.classList.contains('note') && !target.classList.contains('inactive')) {
         // Check if clicking near the right edge for resizing
         isResizing = isResizable;
         if (isResizing) {
@@ -863,7 +870,7 @@ class Sequencer {
     document.addEventListener('pointermove', (e: Event) => {
       const pointerEvent = e as PointerEvent;
       const target = e.target as HTMLElement;
-      if (target.classList.contains('note')) {
+      if (target.classList.contains('note') && !target.classList.contains('inactive')) {
         const rect = target.getBoundingClientRect();
         const x = pointerEvent.clientX - rect.left;
 
@@ -971,10 +978,7 @@ class Sequencer {
 
     if (savedNotes) {
       this.notes = savedNotes;
-      // Render notes
-      this.notes.forEach(note => {
-        this.renderNote(note);
-      });
+      // Render notes (will be re-rendered in renderCurrentTrack)
     }
 
     if (savedBeats) {
@@ -1094,7 +1098,7 @@ class Sequencer {
     // Update UI
     const pianoRollSection = document.querySelector('.piano-roll-section') as HTMLElement;
     if (pianoRollSection) {
-      pianoRollSection.dataset.track = (this.currentTrack + 1).toString();
+      pianoRollSection.dataset.track = this.currentTrack.toString();
       resetAnimation(pianoRollSection, 'notify');
     }
 
@@ -1117,7 +1121,11 @@ class Sequencer {
 
     const pitchShiftInput = document.getElementById('melody-pitch-shift') as HTMLInputElement;
     if (pitchShiftInput) pitchShiftInput.valueAsNumber = this.pitchShifts.get(this.currentTrack) || 0;
-    this.renderCurrentTrack();
+    
+    // Clear selected notes when switching tracks
+    this.selectedNotes.clear();
+
+    this.updateNoteStates();
   }
 
   private getCurrentTrackNotes(): Note[] {
@@ -1224,14 +1232,22 @@ class Sequencer {
   }
 
   private renderNote(note: Note) {
-    if (note.track !== this.currentTrack) return; // 現在のトラックのノートのみ描画
     const pianoRoll = document.querySelector('.piano-roll-grid');
     if (!pianoRoll) return;
 
     const noteElement = document.createElement('div');
     noteElement.classList.add('note');
-    noteElement.classList.add(`note-${note.track + 1}`);
+    noteElement.classList.add(`note-track-${note.track}`);
     noteElement.dataset.noteId = note.id;
+    noteElement.dataset.track = note.track.toString();
+    
+    // 現在のトラック以外は操作不可にする
+    if (note.track !== this.currentTrack) {
+      noteElement.classList.add('inactive');
+    } else {
+      noteElement.classList.add('active');
+    }
+    
     this.updateNoteMeta(noteElement, note);
 
     pianoRoll.appendChild(noteElement);
@@ -1275,12 +1291,29 @@ class Sequencer {
     // Clear existing notes
     document.querySelectorAll('.note').forEach(note => note.remove());
 
-    // Render notes for current track
-    const trackNotes = this.getCurrentTrackNotes()
-    trackNotes.forEach(note => this.renderNote(note));
+    // Render ALL notes from ALL tracks
+    this.notes.forEach(note => this.renderNote(note));
+    
+    // Update active/inactive states for all notes
+    this.updateNoteStates();
     
     // 選択状態を復元
     this.updateSelectedNotesVisual();
+  }
+
+  private updateNoteStates() {
+    document.querySelectorAll('.note').forEach(noteElement => {
+      const element = noteElement as HTMLElement;
+      const trackNumber = parseInt(element.dataset.track || '0');
+      
+      if (trackNumber === this.currentTrack) {
+        element.classList.remove('inactive');
+        element.classList.add('active');
+      } else {
+        element.classList.remove('active');
+        element.classList.add('inactive');
+      }
+    });
   }
 
   private startRectangleSelection(e: PointerEvent, pianoRoll: HTMLElement) {
@@ -1344,7 +1377,7 @@ class Sequencer {
     
     trackNotes.forEach(note => {
       const noteElement = document.querySelector(`[data-note-id="${note.id}"]`) as HTMLElement;
-      if (!noteElement) return;
+      if (!noteElement || noteElement.classList.contains('inactive')) return; // 非アクティブノートは選択対象外
       
       const noteLeft = note.start * 40; // 1ビート = 40px
       const noteTop = (108 - note.pitch) * 20; // 1音程 = 20px
