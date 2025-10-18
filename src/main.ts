@@ -1021,6 +1021,7 @@ class Sequencer {
           }
           return null;
         })();
+        if (!file) return;
         const soundBtn = container.querySelector('.sound-btn') as HTMLButtonElement;
         const sineBtn = container.querySelector('.sine-btn') as HTMLButtonElement;
         if (soundBtn) {
