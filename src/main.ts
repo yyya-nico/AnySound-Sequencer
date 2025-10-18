@@ -1021,13 +1021,13 @@ class Sequencer {
           }
           return null;
         })();
-        const soundBtn = container.querySelector('.sound-button') as HTMLButtonElement;
+        const soundBtn = container.querySelector('.sound-btn') as HTMLButtonElement;
         const sineBtn = container.querySelector('.sine-btn') as HTMLButtonElement;
         if (soundBtn) {
           soundBtn.dataset.i18n = '';
           soundBtn.innerText = filenameToName(file?.name || '');
           if (track === 'melody') {
-            pitchShiftLabel.hidden = !file;
+            pitchShiftLabel.hidden = false;
             this.audioManager.setMelodySample(this.currentTrack, file);
           } else if (track === 'beat1') {
             this.audioManager.setBeatSample(0, file);
@@ -1035,7 +1035,7 @@ class Sequencer {
             this.audioManager.setBeatSample(1, file);
           }
         }
-        if (sineBtn) sineBtn.hidden = true;
+        if (sineBtn) sineBtn.hidden = false;
       });
     }
 
