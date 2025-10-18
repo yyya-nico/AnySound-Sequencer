@@ -877,9 +877,9 @@ header {
   );
 
   @at-root .piano-roll-section {
-    @for $current-track from 0 through 15 {
+    @for $current-track from 1 through 16 {
       &[data-track="#{$current-track}"] {
-        @for $track from 0 through 15 {
+        @for $track from 1 through 16 {
           @if $track != $current-track {
             .note-track-#{$track} {
               @if $track < $current-track {

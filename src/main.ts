@@ -1098,7 +1098,7 @@ class Sequencer {
     // Update UI
     const pianoRollSection = document.querySelector('.piano-roll-section') as HTMLElement;
     if (pianoRollSection) {
-      pianoRollSection.dataset.track = this.currentTrack.toString();
+      pianoRollSection.dataset.track = (this.currentTrack + 1).toString();
       resetAnimation(pianoRollSection, 'notify');
     }
 
@@ -1237,7 +1237,7 @@ class Sequencer {
 
     const noteElement = document.createElement('div');
     noteElement.classList.add('note');
-    noteElement.classList.add(`note-track-${note.track}`);
+    noteElement.classList.add(`note-track-${note.track + 1}`);
     noteElement.dataset.noteId = note.id;
     noteElement.dataset.track = note.track.toString();
     
