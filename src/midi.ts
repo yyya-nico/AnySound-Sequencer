@@ -142,6 +142,13 @@ export class MidiParser {
         event.type = 'programChange';
         event.channel = status & 0x0F;
         event.program = data[pos++];
+      } else if (status >= 0xE0 && status <= 0xEF) {
+        // Pitch Bend
+        event.type = 'controller';
+        event.channel = status & 0x0F;
+        const lsb = data[pos++];
+        const msb = data[pos++];
+        event.value = (msb << 7) | lsb;
       } else if (status === 0xF0 || status === 0xF7) {
         // SysEx Event
         event.type = 'sysex';
