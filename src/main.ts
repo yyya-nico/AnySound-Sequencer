@@ -1184,6 +1184,7 @@ class Sequencer {
       beat1: null,
       beat2: null
     };
+    this.pitchShifts = new Map<number, number>();
     for (let i = 0; i < 16; i++) {
       this.audioManager.setMelodySample(i, null);
       this.audioManager.setMelodyPitchShift(i, 0);
