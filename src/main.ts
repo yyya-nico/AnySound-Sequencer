@@ -1332,6 +1332,7 @@ class Sequencer {
     
     // 矩形内のノートを選択
     this.selectNotesInRectangle(left, top, width, height);
+    this.scrollByDragging(e);
   }
 
   private selectNotesInRectangle(left: number, top: number, width: number, height: number) {
