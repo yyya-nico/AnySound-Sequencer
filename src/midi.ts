@@ -470,12 +470,14 @@ export class MidiConverter {
     notes: Array<{id: string; track: number; pitch: number; start: number; length: number; velocity: number}>;
     beats: Array<{id: string; track: number; position: number; velocity: number}>;
     bpm: number;
+    gridSize: number;
   } {
     const notes: Array<{id: string; track: number; pitch: number; start: number; length: number; velocity: number}> = [];
     const beats: Array<{id: string; track: number; position: number; velocity: number}> = [];
     
     const ticksPerBeat = midiFile.ticksPerQuarter;
     let detectedBpm = bpm;
+    let detectedEndOfTrack = 0 ;
 
     for (let trackIndex = 0; trackIndex < midiFile.tracks.length; trackIndex++) {
       const track = midiFile.tracks[trackIndex];
@@ -509,6 +511,7 @@ export class MidiConverter {
                 position: noteInfo.start,
                 velocity: noteInfo.velocity
               });
+              detectedEndOfTrack = Math.max(detectedEndOfTrack, noteInfo.start + 1);
             } else {
               // Regular note
               notes.push({
@@ -519,6 +522,7 @@ export class MidiConverter {
                 length,
                 velocity: noteInfo.velocity
               });
+              detectedEndOfTrack = Math.max(detectedEndOfTrack, noteInfo.start + length);
             }
             
             activeNotes.delete(event.note);
@@ -527,7 +531,7 @@ export class MidiConverter {
       }
     }
 
-    return { notes, beats, bpm: detectedBpm };
+    return { notes, beats, bpm: detectedBpm, gridSize: Math.ceil(detectedEndOfTrack) };
   }
 
   private static createTempoData(bpm: number): Uint8Array {

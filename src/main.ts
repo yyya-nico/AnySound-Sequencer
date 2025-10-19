@@ -1013,6 +1013,12 @@ class Sequencer {
     const savedQuantization = await localForage.getItem<number>('quantization');
     const savedAudioFiles = await localForage.getItem<Files>('audioFiles');
     const savedMelodyPitchShifts = await localForage.getItem<Map<number, number>>('melodyPitchShifts');
+    const savedGridSize = await localForage.getItem<number>('gridSize');
+
+    if (savedGridSize) {
+      this.gridSize = savedGridSize;
+      document.documentElement.style.setProperty('--grid-size', this.gridSize.toString());
+    }
 
     if (savedNotes) {
       this.notes = savedNotes;
@@ -1022,10 +1028,9 @@ class Sequencer {
     if (savedBeats) {
       this.beats = savedBeats;
       // Render beats
-      document.querySelectorAll('.beat.active').forEach(beat => beat.classList.remove('active'));
-      this.beats.forEach(beat => {
-        document.querySelector(`[data-track="${beat.track}"] [data-position="${beat.position}"]`)?.classList.add('active');
-      });
+      document.querySelectorAll('.beat').forEach(beat => beat.remove());
+      this.createBeats();
+      this.beats.forEach(beat => this.renderBeat(beat));
     }
 
     if (savedBpm) {
@@ -1128,6 +1133,7 @@ class Sequencer {
     localForage.setItem('quantization', this.quantization);
     localForage.setItem('audioFiles', this.files);
     localForage.setItem('melodyPitchShifts', this.pitchShifts);
+    localForage.setItem('gridSize', this.gridSize);
   }
 
   private switchToNextTrack(direction: number) {
@@ -1235,6 +1241,7 @@ class Sequencer {
       beat2: null
     };
     this.pitchShifts = new Map<number, number>();
+    this.gridSize = 64;
     for (let i = 0; i < 16; i++) {
       this.audioManager.setMelodySample(i, null);
       this.audioManager.setMelodyPitchShift(i, 0);
@@ -1744,10 +1751,15 @@ class Sequencer {
         this.notes = sequencerData.notes;
         this.beats = sequencerData.beats;
         this.bpm = sequencerData.bpm;
+        this.gridSize = Math.max(64, sequencerData.gridSize);
         
         // Update UI
+        const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
         const bpmSlider = document.getElementById('bpm-slider') as HTMLInputElement;
         const bpmValue = document.getElementById('bpm-value') as HTMLInputElement;
+        if (sequencerContainer) {
+          sequencerContainer.style.setProperty('--grid-beats', this.gridSize.toString());
+        }
         if (bpmSlider) bpmSlider.valueAsNumber = this.bpm;
         if (bpmValue) bpmValue.valueAsNumber = this.bpm;
         
@@ -1755,10 +1767,9 @@ class Sequencer {
         this.renderCurrentTrack();
         
         // Render beats
-        document.querySelectorAll('.beat.active').forEach(beat => beat.classList.remove('active'));
-        this.beats.forEach(beat => {
-          document.querySelector(`[data-track="${beat.track}"][data-position="${beat.position}"]`)?.classList.add('active');
-        });
+        document.querySelectorAll('.beat').forEach(beat => beat.remove());
+        this.createBeats();
+        this.beats.forEach(beat => this.renderBeat(beat));
         
         // Save data
         this.saveData();
