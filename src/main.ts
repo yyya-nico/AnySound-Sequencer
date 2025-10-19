@@ -1017,7 +1017,7 @@ class Sequencer {
 
     if (savedGridSize) {
       this.gridSize = savedGridSize;
-      document.documentElement.style.setProperty('--grid-size', this.gridSize.toString());
+      (document.querySelector('.sequencer-container') as HTMLElement).style.setProperty('--grid-size', this.gridSize.toString());
     }
 
     if (savedNotes) {
@@ -1250,10 +1250,14 @@ class Sequencer {
     this.audioManager.setBeatSample(1, null);
 
     // Clear UI
+    const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
+    if (sequencerContainer) sequencerContainer.style.setProperty('--grid-size', this.gridSize.toString());
     const pianoRollSection = document.querySelector('.piano-roll-section') as HTMLElement;
     if (pianoRollSection) pianoRollSection.dataset.track = '1'; 
     document.querySelectorAll('.note').forEach(note => note.remove());
-    document.querySelectorAll('.beat.active').forEach(beat => beat.classList.remove('active'));
+    document.querySelectorAll('.beat').forEach(beat => beat.remove());
+    this.createBeats();
+    this.beats.forEach(beat => this.renderBeat(beat));
     const bpmSlider = document.getElementById('bpm-slider') as HTMLInputElement;
     const bpmValue = document.getElementById('bpm-value') as HTMLInputElement;
     if (bpmSlider) bpmSlider.valueAsNumber = this.bpm;
@@ -1758,7 +1762,7 @@ class Sequencer {
         const bpmSlider = document.getElementById('bpm-slider') as HTMLInputElement;
         const bpmValue = document.getElementById('bpm-value') as HTMLInputElement;
         if (sequencerContainer) {
-          sequencerContainer.style.setProperty('--grid-beats', this.gridSize.toString());
+          sequencerContainer.style.setProperty('--grid-size', this.gridSize.toString());
         }
         if (bpmSlider) bpmSlider.valueAsNumber = this.bpm;
         if (bpmValue) bpmValue.valueAsNumber = this.bpm;

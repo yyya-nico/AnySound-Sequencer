@@ -330,7 +330,7 @@ header {
   --sound-panel-width: 180px;
   --width-per-note: 40px; // 4th note
   --height-per-note: 20px;
-  --grid-beats: 64; // 64 beats
+  --grid-size: 64; // 64 beats
   --grid-keys: 88; // 88 keys
   grid-area: 1 / 1 / 2 / 3;
   display: flex;
@@ -448,7 +448,7 @@ header {
 .piano-roll-grid {
   flex-shrink: 0;
   position: relative;
-  width: calc(var(--width-per-note) * var(--grid-beats));
+  width: calc(var(--width-per-note) * var(--grid-size));
   height: calc(var(--height-per-note) * var(--grid-keys));
   margin-inline-end: -100px;
 
@@ -593,7 +593,7 @@ header {
 .rhythm-grid {
   display: grid;
   grid-template-columns: repeat(
-    calc(var(--grid-beats) / var(--quantization, 1)),
+    calc(var(--grid-size) / var(--quantization, 1)),
     calc(var(--width-per-note) * var(--quantization, 1))
   );
   place-items: center;
