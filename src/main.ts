@@ -1786,6 +1786,8 @@ class Sequencer {
     });
     
     input.click();
+
+    document.querySelector('.menu')?.classList.remove('is-open');
   }
 
   // MIDI Export functionality
@@ -1816,6 +1818,8 @@ class Sequencer {
       console.error('Error exporting MIDI file:', error);
       alert('Error exporting MIDI file.');
     }
+
+    document.querySelector('.menu')?.classList.remove('is-open');
   }
 }
 
