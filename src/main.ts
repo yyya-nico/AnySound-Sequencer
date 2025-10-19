@@ -41,6 +41,14 @@ function updateTranslations() {
     }
   });
 
+  // Update drop messages
+  (document.querySelectorAll('[data-i18n-drop]') as NodeListOf<HTMLElement>).forEach(element => {
+    const key = element.dataset.i18nDrop;
+    if (key) {
+      element.dataset.dropMessage = i18next.t(key);
+    }
+  });
+
   // Update document title
   document.title = i18next.t('title');
 }
@@ -345,6 +353,7 @@ class Sequencer {
     this.audioManager = new AudioManager();
 
     this.setupEventListeners();
+    this.setupDragAndDrop();
     this.initializePianoRoll();
     this.initializeRhythmSection();
     this.setupNoteDragResize();
@@ -467,7 +476,6 @@ class Sequencer {
 
     // Audio file inputs
     const soundButtonsContainers = document.querySelectorAll('.sound');
-    const pitchShiftLabel = document.querySelector('.pitch-shift-label') as HTMLElement;
     soundButtonsContainers.forEach(container => {
       const track = (container as HTMLElement).dataset.track;
       const soundBtn = container.querySelector('.sound-btn') as HTMLButtonElement;
@@ -493,36 +501,10 @@ class Sequencer {
         if (target === soundBtn) {
           selectAudioFile().then(file => {
             if (!file) return;
-            soundBtn.dataset.i18n = '';
-            soundBtn.innerText = filenameToName(file.name);
-            sineBtn.hidden = false;
-            if (track === 'melody') {
-              pitchShiftLabel.hidden = false;
-              this.files.melody.set(this.currentTrack, file);
-              this.audioManager.setMelodySample(this.currentTrack, file);
-            } else if (track === 'beat1') {
-              this.files.beat1 = file;
-              this.audioManager.setBeatSample(0, file);
-            } else if (track === 'beat2') {
-              this.files.beat2 = file;
-              this.audioManager.setBeatSample(1, file);
-            }
+            this.setAudioFile(track!, file);
           });
         } else if (target === sineBtn) {
-          soundBtn.dataset.i18n = 'select_sound_source_file';
-          soundBtn.innerText = i18next.t('select_sound_source_file');
-          sineBtn.hidden = true;
-          if (track === 'melody') {
-            pitchShiftLabel.hidden = true;
-            this.files.melody.delete(this.currentTrack);
-            this.audioManager.setMelodySample(this.currentTrack, null);
-          } else if (track === 'beat1') {
-            this.files.beat1 = null;
-            this.audioManager.setBeatSample(0, null);
-          } else if (track === 'beat2') {
-            this.files.beat2 = null;
-            this.audioManager.setBeatSample(1, null);
-          }
+          this.resetAudioFile(track!);
         }
       });
     });
@@ -573,6 +555,133 @@ class Sequencer {
       });
     }
   }
+
+  private setupDragAndDrop() {
+    // Prevent default drag behaviors on the entire document
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      document.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }, false);
+    });
+
+    // Handle drag events for all drop zones
+    const dropZones = document.querySelectorAll('.drop-zone') as NodeListOf<HTMLElement>;
+    
+    dropZones.forEach(dropZone => {
+      dropZone.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('drag-over');
+      });
+
+      dropZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        // Only remove drag-over if we're leaving the drop zone entirely
+        if (!dropZone.contains(e.relatedTarget as Node)) {
+          dropZone.classList.remove('drag-over');
+        }
+      });
+
+      dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer!.dropEffect = 'copy';
+      });
+
+      dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        
+        const files = Array.from(e.dataTransfer!.files);
+        if (files.length === 0) return;
+
+        const file = files[0];
+        this.handleFileDrop(file, dropZone);
+      });
+    });
+  }
+
+  private handleFileDrop(file: File, dropZone: HTMLElement) {
+    const fileExtension = file.name.toLowerCase().split('.').pop();
+    const isAudioFile = file.type.startsWith('audio/') || 
+      ['mp3', 'wav', 'ogg', 'aac', 'm4a', 'flac'].includes(fileExtension || '');
+
+    // Track-specific drop - only accept audio files
+    if (isAudioFile) {
+      const trackType = this.getTrackTypeFromDropZone(dropZone);
+      if (trackType) {
+        this.setAudioFile(trackType, file);
+      }
+    } else {
+      alert(i18next.t('import_error_invalid_audio_file'));
+    }
+  }
+
+  private getTrackTypeFromDropZone(dropZone: HTMLElement): string | null {
+    // Check if it's the piano roll section (melody track)
+    if (dropZone.classList.contains('piano-roll-section')) {
+      return 'melody';
+    }
+    
+    // Check if it's a rhythm track
+    if (dropZone.classList.contains('rhythm-track')) {
+      const trackIndex = dropZone.dataset.track;
+      if (trackIndex === '0') {
+        return 'beat1';
+      } else if (trackIndex === '1') {
+        return 'beat2';
+      }
+    }
+    
+    return null;
+  }
+
+  private setAudioFile(trackType: string, file: File) {
+    const soundButtonsContainer = document.querySelector(`.sound[data-track="${trackType}"]`) as HTMLElement;
+    const pitchShiftLabel = document.querySelector('.pitch-shift-label') as HTMLElement;
+    const soundBtn = soundButtonsContainer.querySelector('.sound-btn') as HTMLButtonElement;
+    const sineBtn = soundButtonsContainer.querySelector('.sine-btn') as HTMLButtonElement;
+    
+    soundBtn.dataset.i18n = '';
+    soundBtn.innerText = filenameToName(file.name);
+    sineBtn.hidden = false;
+    
+    if (trackType === 'melody') {
+      pitchShiftLabel.hidden = false;
+      this.files.melody.set(this.currentTrack, file);
+      this.audioManager.setMelodySample(this.currentTrack, file);
+    } else if (trackType === 'beat1') {
+      this.files.beat1 = file;
+      this.audioManager.setBeatSample(0, file);
+    } else if (trackType === 'beat2') {
+      this.files.beat2 = file;
+      this.audioManager.setBeatSample(1, file);
+    }
+  }
+
+  private resetAudioFile(trackType: string) {
+    const soundButtonsContainer = document.querySelector(`.sound[data-track="${trackType}"]`) as HTMLElement;
+    const pitchShiftLabel = document.querySelector('.pitch-shift-label') as HTMLElement;
+    const soundBtn = soundButtonsContainer.querySelector('.sound-btn') as HTMLButtonElement;
+    const sineBtn = soundButtonsContainer.querySelector('.sine-btn') as HTMLButtonElement;
+    
+    soundBtn.dataset.i18n = 'select_sound_source_file';
+    soundBtn.innerText = i18next.t('select_sound_source_file');
+    sineBtn.hidden = true;
+    
+    if (trackType === 'melody') {
+      pitchShiftLabel.hidden = true;
+      this.files.melody.delete(this.currentTrack);
+      this.audioManager.setMelodySample(this.currentTrack, null);
+    } else if (trackType === 'beat1') {
+      this.files.beat1 = null;
+      this.audioManager.setBeatSample(0, null);
+    } else if (trackType === 'beat2') {
+      this.files.beat2 = null;
+      this.audioManager.setBeatSample(1, null);
+    }
+  }
+
+
 
   private initializePianoRoll() {
     const section = document.querySelector('.piano-roll-section') as HTMLElement;
@@ -1754,7 +1863,7 @@ class Sequencer {
         console.log(`Imported MIDI file: ${file.name}`);
       } catch (error) {
         console.error('Error importing MIDI file:', error);
-        alert(i18next.t('import_error_invalid_file'));
+        alert(i18next.t('import_error_invalid_midi_file'));
       }
     });
     

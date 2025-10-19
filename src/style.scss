@@ -70,6 +70,28 @@ body {
   touch-action: manipulation;
 }
 
+// Drag and drop styles
+.drag-over {
+  &::before {
+    content: attr(data-drop-message);
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    position: sticky;
+    top: 0;
+    left: 0;
+    margin-inline-end: max(-100% + 1px, -100vw + 1px);
+    width: min(100% - 4px, 100vw - 4px);
+    background-color: rgba(102, 204, 255, 0.1);
+    border: 2px dashed #66ccff;
+    z-index: 2;
+    color: white;
+    font-weight: bold;
+    font-size: 14px;
+    pointer-events: none;
+  }
+}
+
 h1 {
   font-size: inherit;
   font-weight: 400;

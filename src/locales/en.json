@@ -30,8 +30,12 @@
   "melody_volume": "Melody Volume",
   "beat_volume": "Beat Volume",
   "import_midi": "Import MIDI",
-  "import_error_invalid_file": "Error importing MIDI file. Please check the file format.",
+  "import_error_invalid_midi_file": "Error importing MIDI file. Please check the file format.",
+  "import_error_invalid_audio_file": "Unsupported file format. Please use audio files (mp3, wav, ogg, etc.). for MIDI files, use the MIDI import from the menu.",
   "export_midi": "Export MIDI",
   "clear_all": "Clear All",
-  "confirm_clear_all": "Are you sure you want to clear all the work?"
+  "confirm_clear_all": "Are you sure you want to clear all the work?",
+  "drop_sound_for_melody": "Drop Sound Source File for Melody",
+  "drop_sound_for_beat1": "Drop Sound Source File for Beat 1",
+  "drop_sound_for_beat2": "Drop Sound Source File for Beat 2"
 }
