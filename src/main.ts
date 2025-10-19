@@ -462,29 +462,8 @@ class Sequencer {
     quantizationSelect?.addEventListener('change', (e) => {
       const newQuantization = parseFloat((e.target as HTMLSelectElement).value);
       this.quantization = newQuantization;
-      const adjustedQuantization = this.quantization > 0 ? this.quantization : 0.1;
-      document.querySelectorAll('.rhythm-grid').forEach((grid, trackIndex) => {
-        // Clear existing beats
-        grid.textContent = '';
-        // Create beats grid
-        for (let i = 0; i < this.gridSize; i += adjustedQuantization) {
-          const beatElement = document.createElement('div');
-          beatElement.className = 'beat';
-          beatElement.dataset.position = i.toString();
-          beatElement.dataset.track = trackIndex.toString();
-
-          beatElement.addEventListener('click', () => {
-            this.toggleBeat(trackIndex, i);
-          });
-
-          grid.appendChild(beatElement);
-        }
-      });
-      // Render beats
-      this.beats.forEach(beat => {
-        document.querySelector(`[data-track="${beat.track}"] [data-position="${beat.position}"]`)?.classList.add('active');
-      });
-      (document.querySelector('.sequencer-container') as HTMLElement)?.style.setProperty('--quantization', adjustedQuantization.toString());
+      document.querySelectorAll('.beat').forEach(beat => beat.remove());
+      this.renderBeats();
     });
 
     // Audio file inputs
@@ -839,7 +818,8 @@ class Sequencer {
   }
 
   private initializeRhythmSection() {
-    document.querySelector('.rhythm-section')?.addEventListener('scroll', (e) => {
+    const section = document.querySelector('.rhythm-section') as HTMLElement;
+    section.addEventListener('scroll', (e) => {
       if (this.pointerDowned) {
         this.autoScroll = false;
       }
@@ -855,12 +835,46 @@ class Sequencer {
         beatElement.dataset.position = i.toString();
         beatElement.dataset.track = trackIndex.toString();
 
-        beatElement.addEventListener('click', () => {
-          this.toggleBeat(trackIndex, i);
-        });
-
         grid.appendChild(beatElement);
       }
+    });
+
+    let isPointerDown = false;
+    let shoudRemove = false
+    section.addEventListener('pointerdown', (e: PointerEvent) => {
+      if (!e.isPrimary || e.button !== 0) return; // 左クリックのみ
+      const target = e.target as HTMLElement;
+      if (target.classList.contains('beat')) {
+        const position = parseFloat(target.dataset.position!);
+        const track = parseInt(target.dataset.track!);
+        if (target.classList.contains('active')) {
+          this.removeBeat(track, position);
+          shoudRemove = true;
+        } else {
+          this.addBeat(track, position);
+          shoudRemove = false;
+        }
+      }
+      isPointerDown = true;
+    });
+
+    section.addEventListener('pointermove', (e: PointerEvent) => {
+      if (!isPointerDown) return;
+      const target = e.target as HTMLElement;
+      if (target.classList.contains('beat')) {
+        const position = parseFloat(target.dataset.position!);
+        const track = parseInt(target.dataset.track!);
+        if (shoudRemove) {
+          this.removeBeat(track, position);
+        } else {
+          this.addBeat(track, position);
+        }
+      }
+    });
+
+    section.addEventListener('pointerup', (e: PointerEvent) => {
+      if (!e.isPrimary || e.button !== 0) return; // 左クリックのみ
+      isPointerDown = false;
     });
   }
 
@@ -1007,6 +1021,7 @@ class Sequencer {
     if (savedBeats) {
       this.beats = savedBeats;
       // Render beats
+      document.querySelectorAll('.beat.active').forEach(beat => beat.classList.remove('active'));
       this.beats.forEach(beat => {
         document.querySelector(`[data-track="${beat.track}"] [data-position="${beat.position}"]`)?.classList.add('active');
       });
@@ -1028,29 +1043,8 @@ class Sequencer {
 
     if (savedQuantization !== null && !isNaN(savedQuantization)) {
       this.quantization = savedQuantization;
-      const adjustedQuantization = this.quantization > 0 ? this.quantization : 0.1;
-      document.querySelectorAll('.rhythm-grid').forEach((grid, trackIndex) => {
-        // Clear existing beats
-        grid.textContent = '';
-        // Create beats grid
-        for (let i = 0; i < this.gridSize; i += adjustedQuantization) {
-          const beatElement = document.createElement('div');
-          beatElement.className = 'beat';
-          beatElement.dataset.position = i.toString();
-          beatElement.dataset.track = trackIndex.toString();
-
-          beatElement.addEventListener('click', () => {
-            this.toggleBeat(trackIndex, i);
-          });
-
-          grid.appendChild(beatElement);
-        }
-      });
-      // Render beats
-      this.beats.forEach(beat => {
-        document.querySelector(`[data-track="${beat.track}"] [data-position="${beat.position}"]`)?.classList.add('active');
-      });
-      (document.querySelector('.sequencer-container') as HTMLElement)?.style.setProperty('--quantization', adjustedQuantization.toString());
+      document.querySelectorAll('.beat').forEach(beat => beat.remove());
+      this.renderBeats();
       const quantizationSelect = document.getElementById('quantization-select') as HTMLSelectElement;
       if (quantizationSelect) quantizationSelect.value = this.quantization.toString();
     }
@@ -1310,27 +1304,49 @@ class Sequencer {
     noteElement.style.setProperty('--length', note.length.toString());
   }
 
-  private toggleBeat(track: number, position: number) {
+  private addBeat(track: number, position: number) {
     const existingBeatIndex = this.beats.findIndex(
       beat => beat.track === track && beat.position === position
     );
+    if (existingBeatIndex >= 0) return;
+    const beat: Beat = {
+      id: `beat-${Date.now()}-${Math.random()}`,
+      track,
+      position,
+      velocity: 100
+    };
+    this.beats.push(beat);
+    document.querySelector(`[data-track="${track}"] [data-position="${position}"]`)?.classList.add('active');
+    this.audioManager.playBeat(beat);
+  }
 
-    if (existingBeatIndex >= 0) {
-      // Remove beat
-      this.beats.splice(existingBeatIndex, 1);
-      document.querySelector(`[data-track="${track}"] [data-position="${position}"]`)?.classList.remove('active');
-    } else {
-      // Add beat
-      const beat: Beat = {
-        id: `beat-${Date.now()}-${Math.random()}`,
-        track,
-        position,
-        velocity: 100
-      };
-      this.beats.push(beat);
-      document.querySelector(`[data-track="${track}"] [data-position="${position}"]`)?.classList.add('active');
-      this.audioManager.playBeat(beat);
-    }
+  private removeBeat(track: number, position: number) {
+    const existingBeatIndex = this.beats.findIndex(
+      beat => beat.track === track && beat.position === position
+    );
+    if (existingBeatIndex == -1) return;
+    this.beats.splice(existingBeatIndex, 1);
+    document.querySelector(`[data-track="${track}"] [data-position="${position}"]`)?.classList.remove('active');
+  }
+
+  private renderBeats() {
+    const adjustedQuantization = this.quantization > 0 ? this.quantization : 0.1;
+    document.querySelectorAll('.rhythm-grid').forEach((grid, trackIndex) => {
+      // Create beats grid
+      for (let i = 0; i < this.gridSize; i += adjustedQuantization) {
+        const beatElement = document.createElement('div');
+        beatElement.className = 'beat';
+        beatElement.dataset.position = i.toString();
+        beatElement.dataset.track = trackIndex.toString();
+
+        grid.appendChild(beatElement);
+      }
+    });
+    // Render beats
+    this.beats.forEach(beat => {
+      document.querySelector(`[data-track="${beat.track}"] [data-position="${beat.position}"]`)?.classList.add('active');
+    });
+    (document.querySelector('.sequencer-container') as HTMLElement)?.style.setProperty('--quantization', adjustedQuantization.toString());
   }
 
   private renderCurrentTrack() {
