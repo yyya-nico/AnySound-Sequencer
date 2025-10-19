@@ -329,8 +329,6 @@ class Sequencer {
   private defaultNoteLength: number = 1;
   private paused: boolean = true;
   private gridSize: number = 64; // 64 beats
-  private loopTimeout: number | null = null;
-  private animationId: number | null = null;
   private saveTimeout: number | null = null;
   private lastBpmChangeTime: number = 0;
   private lastBpmChangeBeat: number = 0;
@@ -1596,9 +1594,6 @@ class Sequencer {
   }
 
   private async play() {
-    if (!this.paused) {
-      this.loopTimeout && clearTimeout(this.loopTimeout);
-    }
     if (this.currentBeat >= this.getEndOfTrack()) {
       this.resetPlayback();
     }
@@ -1625,6 +1620,8 @@ class Sequencer {
     }
 
     const playRendering = (timeStamp: number) => {
+      if (this.paused) return;
+      requestAnimationFrame(playRendering);
       // 現在のビート位置を時間ベースで計算
       const elapsedSinceLastBpmChange = (timeStamp - this.lastBpmChangeTime) / 1000;
       const beatsSinceLastBpmChange = elapsedSinceLastBpmChange * (this.bpm * this.playbackSpeed) / 60;
@@ -1639,12 +1636,12 @@ class Sequencer {
       } else if (this.currentBeat <= 0.2) {
         this.autoScroll = true;
       }
-      this.animationId = requestAnimationFrame(playRendering);
     };
-    this.animationId = requestAnimationFrame(playRendering);
+    requestAnimationFrame(playRendering);
 
     const playLoop = () => {
       if (this.paused) return;
+      setTimeout(playLoop, 1);
     
       const now = performance.now();
       
@@ -1677,8 +1674,6 @@ class Sequencer {
         }
         this.resetPlayback();
       }
-
-      this.loopTimeout = setTimeout(playLoop, 1);
     };
 
     playLoop();
@@ -1687,8 +1682,6 @@ class Sequencer {
   private pause() {
     this.paused = true;
     this.renderPlayButton();
-    this.loopTimeout && clearTimeout(this.loopTimeout);
-    this.animationId && cancelAnimationFrame(this.animationId);
     this.playedNotes.clear();
     const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
     sequencerContainer.classList.remove('playing');
@@ -1701,8 +1694,6 @@ class Sequencer {
   private stop() {
     this.paused = true;
     this.renderPlayButton();
-    this.loopTimeout && clearTimeout(this.loopTimeout);
-    this.animationId && cancelAnimationFrame(this.animationId);
     this.playedNotes.clear();
     const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
     sequencerContainer.classList.remove('playing', 'paused');
