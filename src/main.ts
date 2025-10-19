@@ -325,6 +325,8 @@ class AudioManager {
 
 // Sequencer Class
 class Sequencer {
+  private static readonly noteWidth = 40; // pixels per beat
+  private static readonly noteHeight = 20; // pixels per note
   private audioManager: AudioManager;
   private viewPort: {
     startBeat: number | null;
@@ -703,7 +705,7 @@ class Sequencer {
     if (!pianoRoll) return;
 
     document.getElementById('app')!.style.setProperty('--scrollbar-width', `${section.offsetHeight - section.clientHeight}px`);
-    section.scrollTop = 20 * (12 * 2 + 2); // 2 octaves + extra space
+    section.scrollTop = Sequencer.noteHeight * (12 * 2 + 2); // 2 octaves + extra space
     let beforeScrollLeft = 0, beforeScrollTop = section.scrollTop;
     section.addEventListener('scroll', (e) => {
       if (this.pointerDowned) {
@@ -713,7 +715,7 @@ class Sequencer {
       const scrollLeft = target.scrollLeft;
       const scrollTop = target.scrollTop;
       document.querySelector('.rhythm-section')!.scrollTo({ left: scrollLeft });
-      if (Math.abs(scrollLeft - beforeScrollLeft) > 40 || Math.abs(scrollTop - beforeScrollTop) > 40) {
+      if (Math.abs(scrollLeft - beforeScrollLeft) > Sequencer.noteWidth || Math.abs(scrollTop - beforeScrollTop) > Sequencer.noteHeight) {
         beforeScrollLeft = scrollLeft;
         beforeScrollTop = scrollTop;
         this.renderTracks();
@@ -741,11 +743,11 @@ class Sequencer {
       const y = e.clientY - rect.top;
       let pointerNotePosition = null;
       if (this.quantization < 0) {
-        pointerNotePosition = x / 40;
+        pointerNotePosition = x / Sequencer.noteWidth;
       } else {
-        pointerNotePosition = multipleFloor(x / 40, this.quantization);
+        pointerNotePosition = multipleFloor(x / Sequencer.noteWidth, this.quantization);
       }
-      const pointerNoteIndex = Math.floor(y / 20);
+      const pointerNoteIndex = Math.floor(y / Sequencer.noteHeight);
       const pointerMidiNote = 108 - pointerNoteIndex; // C8 at top
       const isPointerDown = e.type === 'pointerdown';
       if (isPointerDown) {
@@ -928,9 +930,9 @@ class Sequencer {
         const currentRelativeX = e.clientX - pianoRollRect.left;
         const deltaX = currentRelativeX - initialRelativeX;
         
-        const newPosition = minmax(beforePos + deltaX, 0, this.gridSize * 40);
+        const newPosition = minmax(beforePos + deltaX, 0, this.gridSize * Sequencer.noteWidth);
         playbackPosition.style.setProperty('--position', `${newPosition}px`);
-        const newBeat = newPosition / 40;
+        const newBeat = newPosition / Sequencer.noteWidth;
         this.currentBeat = newBeat;
 
         // Play notes at current beat
@@ -1060,9 +1062,9 @@ class Sequencer {
         const deltaX = pointerEvent.clientX - startX;
         let newNoteValue = null;
         if (this.quantization < 0) {
-          newNoteValue = Math.max(0.1, (originalWidth + deltaX) / 40);
+          newNoteValue = Math.max(0.1, (originalWidth + deltaX) / Sequencer.noteWidth);
         } else {
-          newNoteValue = Math.max(this.quantization, multipleFloor((originalWidth + deltaX) / 40, this.quantization));
+          newNoteValue = Math.max(this.quantization, multipleFloor((originalWidth + deltaX) / Sequencer.noteWidth, this.quantization));
         }
         currentNote.style.setProperty('--length', newNoteValue.toString());
 
@@ -1249,15 +1251,13 @@ class Sequencer {
     
     // ビート範囲（少し余裕を持たせる）
     const soundPanelWidth = 180; // CSS変数から取得
-    const beatWidth = 40; // CSS変数から取得
     const adjustedLeft = Math.max(0, scrollLeft - soundPanelWidth);
-    this.viewPort.startBeat = Math.max(0, Math.floor(adjustedLeft / beatWidth) - 2);
-    this.viewPort.endBeat = Math.ceil((adjustedLeft + viewWidth) / beatWidth) + 2;
+    this.viewPort.startBeat = Math.max(0, Math.floor(adjustedLeft / Sequencer.noteWidth) - 2);
+    this.viewPort.endBeat = Math.ceil((adjustedLeft + viewWidth) / Sequencer.noteWidth) + 2;
 
     // ピッチ範囲
-    const noteHeight = 20; // CSS変数から取得
-    this.viewPort.startPitch = 108 - Math.max(0, Math.floor(scrollTop / noteHeight) - 2);
-    this.viewPort.endPitch = 108 - Math.min(127, Math.ceil((scrollTop + viewHeight) / noteHeight) + 2);
+    this.viewPort.startPitch = 108 - Math.max(0, Math.floor(scrollTop / Sequencer.noteHeight) - 2);
+    this.viewPort.endPitch = 108 - Math.min(127, Math.ceil((scrollTop + viewHeight) / Sequencer.noteHeight) + 2);
   }
 
   private isNoteVisible(note: Note): boolean {
@@ -1606,12 +1606,12 @@ class Sequencer {
       const noteElement = document.querySelector(`[data-note-id="${note.id}"]`) as HTMLElement;
       const isCurrentNote = note.track === this.currentTrack;
       if (!noteElement || !isCurrentNote) return; // 非アクティブノートは選択対象外
-      
-      const noteLeft = note.start * 40; // 1ビート = 40px
-      const noteTop = (108 - note.pitch) * 20; // 1音程 = 20px
-      const noteRight = noteLeft + note.length * 40;
-      const noteBottom = noteTop + 20;
-      
+
+      const noteLeft = note.start * Sequencer.noteWidth;
+      const noteTop = (108 - note.pitch) * Sequencer.noteHeight;
+      const noteRight = noteLeft + note.length * Sequencer.noteWidth;
+      const noteBottom = noteTop + Sequencer.noteHeight;
+
       // 矩形との重なりをチェック
       const overlaps = !(noteRight < left || noteLeft > right || noteBottom < top || noteTop > bottom);
       
@@ -1665,9 +1665,9 @@ class Sequencer {
       const deltaX = currentX - startX;
       const deltaY = currentY - startY;
       
-      const deltaBeat = deltaX / 40; // 1ビート = 40px
-      const deltaPitch = -Math.round(deltaY / 20); // 1音程 = 20px, Y軸は反転
-      
+      const deltaBeat = deltaX / Sequencer.noteWidth;
+      const deltaPitch = -Math.round(deltaY / Sequencer.noteHeight); // Y軸は反転
+
       selectedNotesData.forEach(({note, initialStart, initialPitch}) => {
         let newStart = null;
         if (this.quantization < 0) {
@@ -1782,8 +1782,8 @@ class Sequencer {
       const beatsSinceLastBpmChange = elapsedSinceLastBpmChange * (this.bpm * this.playbackSpeed) / 60;
       this.currentBeat = this.lastBpmChangeBeat + beatsSinceLastBpmChange;
       
-      // playbackPositionの位置を更新（1ビート = 40px）
-      const positionInPixels = this.currentBeat * 40;
+      // playbackPositionの位置を更新
+      const positionInPixels = this.currentBeat * Sequencer.noteWidth;
       playbackPosition.style.setProperty('--position', `${positionInPixels}px`);
 
       if (this.autoScroll) {
