@@ -704,16 +704,18 @@ class Sequencer {
 
     document.getElementById('app')!.style.setProperty('--scrollbar-width', `${section.offsetHeight - section.clientHeight}px`);
     section.scrollTop = 20 * (12 * 2 + 2); // 2 octaves + extra space
-    let beforeScrollLeft = 0;
+    let beforeScrollLeft = 0, beforeScrollTop = section.scrollTop;
     section.addEventListener('scroll', (e) => {
       if (this.pointerDowned) {
         this.autoScroll = false;
       }
       const target = e.target as HTMLElement;
       const scrollLeft = target.scrollLeft;
+      const scrollTop = target.scrollTop;
       document.querySelector('.rhythm-section')!.scrollTo({ left: scrollLeft });
-      if (Math.abs(scrollLeft - beforeScrollLeft) > 40) {
+      if (Math.abs(scrollLeft - beforeScrollLeft) > 40 || Math.abs(scrollTop - beforeScrollTop) > 40) {
         beforeScrollLeft = scrollLeft;
+        beforeScrollTop = scrollTop;
         this.renderTracks();
       }
     });
