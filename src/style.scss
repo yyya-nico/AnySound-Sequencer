@@ -821,6 +821,16 @@ header {
   color: #000;
   font-size: 14px;
 
+  &:hover {
+    background: #7dd3ff;
+  }
+
+  &.selected {
+    background: #007acc;
+    color: #fff;
+    border: 2px solid #005a9e;
+  }
+
   &::after {
     content: "";
     position: absolute;
@@ -835,23 +845,8 @@ header {
     background: #ffffff3f;
   }
 
-  // アクティブなトラックのノート
-  &.active {
-    cursor: pointer;
-
-    &:hover {
-      background: #7dd3ff;
-    }
-
-    &.selected {
-      background: #007acc;
-      color: #fff;
-      border: 2px solid #005a9e;
-    }
-  }
-
   // 非アクティブなトラックのノート
-  &.inactive {
+  %inactive {
     cursor: default;
     pointer-events: none;
 
@@ -885,6 +880,7 @@ header {
         @for $track from 1 through 16 {
           @if $track != $current-track {
             .note-track-#{$track} {
+              @extend %inactive;
               @if $track < $current-track {
                 // 前のトラック（過去のトラック）
                 opacity: map.get($note-opacity, $current-track - $track);

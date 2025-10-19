@@ -689,12 +689,15 @@ class Sequencer {
       }
       
       const target = e.target as HTMLElement;
-      const trackNotes = this.getCurrentTrackNotes();
+      const isNote = target.classList.contains('note');
+      const isCurrentNote = target.dataset.track === String(this.currentTrack);
       
       // 現在のトラック以外のノートは操作不可
-      if (target.classList.contains('note') && target.classList.contains('inactive')) {
+      if (isNote && !isCurrentNote) {
         return;
       }
+
+      const trackNotes = this.getCurrentTrackNotes();
       
       currentNote = trackNotes.find(note => note.id === target.dataset.noteId) || null;
       
@@ -749,8 +752,9 @@ class Sequencer {
     const removeNoteByEvent = (e: MouseEvent | CustomEvent) => {
       const target = (e?.detail?.originalTarget as HTMLElement) || (e.target as HTMLElement);
       const noteId = target.dataset.noteId || null;
+      const isCurrentNote = target.dataset.track === String(this.currentTrack);
       // 非アクティブなノートは削除できない
-      if (noteId && !target.classList.contains('inactive')) {
+      if (noteId && isCurrentNote) {
         this.removeNote(noteId);
       }
     };
@@ -891,7 +895,9 @@ class Sequencer {
     pianoRoll.addEventListener('pointerdown', (e: Event) => {
       const pointerEvent = e as PointerEvent;
       const target = e.target as HTMLElement;
-      if (target.classList.contains('note') && !target.classList.contains('inactive')) {
+      const isNote = target.classList.contains('note');
+      const isCurrentNote = target.dataset.track === String(this.currentTrack);
+      if (isNote && isCurrentNote) {
         // Check if clicking near the right edge for resizing
         isResizing = isResizable;
         if (isResizing) {
@@ -906,7 +912,9 @@ class Sequencer {
     document.addEventListener('pointermove', (e: Event) => {
       const pointerEvent = e as PointerEvent;
       const target = e.target as HTMLElement;
-      if (target.classList.contains('note') && !target.classList.contains('inactive')) {
+      const isNote = target.classList.contains('note');
+      const isCurrentNote = target.dataset.track === String(this.currentTrack);
+      if (isNote && isCurrentNote) {
         const rect = target.getBoundingClientRect();
         const x = pointerEvent.clientX - rect.left;
 
@@ -1170,8 +1178,6 @@ class Sequencer {
     
     // Clear selected notes when switching tracks
     this.selectedNotes.clear();
-
-    this.updateNoteStates();
   }
 
   private getCurrentTrackNotes(): Note[] {
@@ -1292,13 +1298,6 @@ class Sequencer {
     noteElement.dataset.noteId = note.id;
     noteElement.dataset.track = note.track.toString();
     
-    // 現在のトラック以外は操作不可にする
-    if (note.track !== this.currentTrack) {
-      noteElement.classList.add('inactive');
-    } else {
-      noteElement.classList.add('active');
-    }
-    
     this.updateNoteMeta(noteElement, note);
 
     pianoRoll.appendChild(noteElement);
@@ -1367,26 +1366,8 @@ class Sequencer {
     // Render ALL notes from ALL tracks
     this.notes.forEach(note => this.renderNote(note));
     
-    // Update active/inactive states for all notes
-    this.updateNoteStates();
-    
     // 選択状態を復元
     this.updateSelectedNotesVisual();
-  }
-
-  private updateNoteStates() {
-    document.querySelectorAll('.note').forEach(noteElement => {
-      const element = noteElement as HTMLElement;
-      const trackNumber = parseInt(element.dataset.track || '0');
-      
-      if (trackNumber === this.currentTrack) {
-        element.classList.remove('inactive');
-        element.classList.add('active');
-      } else {
-        element.classList.remove('active');
-        element.classList.add('inactive');
-      }
-    });
   }
 
   private startRectangleSelection(e: PointerEvent, pianoRoll: HTMLElement) {
@@ -1450,7 +1431,8 @@ class Sequencer {
     
     trackNotes.forEach(note => {
       const noteElement = document.querySelector(`[data-note-id="${note.id}"]`) as HTMLElement;
-      if (!noteElement || noteElement.classList.contains('inactive')) return; // 非アクティブノートは選択対象外
+      const isCurrentNote = note.track === this.currentTrack;
+      if (!noteElement || !isCurrentNote) return; // 非アクティブノートは選択対象外
       
       const noteLeft = note.start * 40; // 1ビート = 40px
       const noteTop = (108 - note.pitch) * 20; // 1音程 = 20px
