@@ -326,6 +326,17 @@ class AudioManager {
 // Sequencer Class
 class Sequencer {
   private audioManager: AudioManager;
+  private viewPort: {
+    startBeat: number | null;
+    endBeat: number | null;
+    startPitch: number | null;
+    endPitch: number | null;
+  } = {
+    startBeat: null,
+    endBeat: null,
+    startPitch: null,
+    endPitch: null
+  }
   private notes: Note[] = [];
   private beats: Beat[] = [];
   private files: Files = { melody: new Map(), beat1: null, beat2: null };
@@ -337,6 +348,7 @@ class Sequencer {
   private defaultNoteLength: number = 1;
   private paused: boolean = true;
   private gridSize: number = 64; // 64 beats
+  private visibleNoteElements: Map<string, HTMLElement> = new Map(); // noteId -> element
   private saveTimeout: number | null = null;
   private lastBpmChangeTime: number = 0;
   private lastBpmChangeBeat: number = 0;
@@ -358,6 +370,7 @@ class Sequencer {
     this.initializeRhythmSection();
     this.setupNoteDragResize();
     this.setupTrackScrolling();
+    this.updateViewPort();
     this.setupLocalForage();
   }
 
@@ -691,6 +704,7 @@ class Sequencer {
 
     document.getElementById('app')!.style.setProperty('--scrollbar-width', `${section.offsetHeight - section.clientHeight}px`);
     section.scrollTop = 20 * (12 * 2 + 2); // 2 octaves + extra space
+    let beforeScrollLeft = 0;
     section.addEventListener('scroll', (e) => {
       if (this.pointerDowned) {
         this.autoScroll = false;
@@ -698,6 +712,10 @@ class Sequencer {
       const target = e.target as HTMLElement;
       const scrollLeft = target.scrollLeft;
       document.querySelector('.rhythm-section')!.scrollTo({ left: scrollLeft });
+      if (Math.abs(scrollLeft - beforeScrollLeft) > 40) {
+        beforeScrollLeft = scrollLeft;
+        this.renderTracks();
+      }
     });
 
     section.addEventListener('animationend', () => {
@@ -1215,7 +1233,36 @@ class Sequencer {
       if (pitchShiftInput) pitchShiftInput.valueAsNumber = this.pitchShifts.get(this.currentTrack) || 0;
     }
 
-    this.renderCurrentTrack();
+    this.renderTracks();
+  }
+
+  private updateViewPort() {
+    const section = document.querySelector('.piano-roll-section') as HTMLElement;
+    
+    // 現在の表示範囲を計算
+    const scrollLeft = section.scrollLeft;
+    const scrollTop = section.scrollTop;
+    const viewWidth = section.clientWidth;
+    const viewHeight = section.clientHeight;
+    
+    // ビート範囲（少し余裕を持たせる）
+    const soundPanelWidth = 180; // CSS変数から取得
+    const beatWidth = 40; // CSS変数から取得
+    const adjustedLeft = Math.max(0, scrollLeft - soundPanelWidth);
+    this.viewPort.startBeat = Math.max(0, Math.floor(adjustedLeft / beatWidth) - 2);
+    this.viewPort.endBeat = Math.ceil((adjustedLeft + viewWidth) / beatWidth) + 2;
+
+    // ピッチ範囲
+    const noteHeight = 20; // CSS変数から取得
+    this.viewPort.startPitch = 108 - Math.max(0, Math.floor(scrollTop / noteHeight) - 2);
+    this.viewPort.endPitch = 108 - Math.min(127, Math.ceil((scrollTop + viewHeight) / noteHeight) + 2);
+  }
+
+  private isNoteVisible(note: Note): boolean {
+    return note.start + note.length > this.viewPort.startBeat! &&
+           note.start < this.viewPort.endBeat! &&          
+           note.pitch <= this.viewPort.startPitch! &&
+           note.pitch >= this.viewPort.endPitch!;
   }
 
   private scrollByDragging(e: PointerEvent, horizontalOnly: boolean = false) {
@@ -1313,8 +1360,12 @@ class Sequencer {
 
     trackNotes.push(note);
     this.setCurrentTrackNotes(trackNotes);
-
-    this.renderNote(note);
+    if (this.isNoteVisible(note)) {
+      const noteElement = this.createNoteElement(note);
+      const pianoRoll = document.querySelector('.piano-roll-grid') as HTMLElement;
+      pianoRoll.appendChild(noteElement);
+      this.visibleNoteElements.set(note.id, noteElement);
+    }
     return noteId;
   }
 
@@ -1338,8 +1389,11 @@ class Sequencer {
     const trackNotes = this.getCurrentTrackNotes()
     const filteredNotes = trackNotes.filter(note => note.id !== noteId);
     this.setCurrentTrackNotes(filteredNotes);
-
-    document.querySelector(`[data-note-id="${noteId}"]`)?.remove();
+    const element = this.visibleNoteElements.get(noteId);
+    if (element) {
+      element.remove();
+      this.visibleNoteElements.delete(noteId);
+    }
   }
 
   private clearAll() {
@@ -1396,20 +1450,15 @@ class Sequencer {
     document.querySelector('.menu')?.classList.remove('is-open');
     this.saveData();
   }
-
-  private renderNote(note: Note) {
-    const pianoRoll = document.querySelector('.piano-roll-grid');
-    if (!pianoRoll) return;
-
+  
+  private createNoteElement(note: Note): HTMLElement {
     const noteElement = document.createElement('div');
     noteElement.classList.add('note');
     noteElement.classList.add(`note-track-${note.track + 1}`);
     noteElement.dataset.noteId = note.id;
     noteElement.dataset.track = note.track.toString();
-    
     this.updateNoteMeta(noteElement, note);
-
-    pianoRoll.appendChild(noteElement);
+    return noteElement;
   }
 
   private updateNoteMeta(noteElement: HTMLElement, note: Note) {
@@ -1468,14 +1517,27 @@ class Sequencer {
     document.querySelector(`[data-track="${beat.track}"] [data-position="${beat.position}"]`)?.classList.add('active');
   }
 
-  private renderCurrentTrack() {
-    // Clear existing notes
-    document.querySelectorAll('.note').forEach(note => note.remove());
+  private renderTracks() {
+    this.updateViewPort();
 
-    // Render ALL notes from ALL tracks
-    this.notes.forEach(note => this.renderNote(note));
-    
-    // 選択状態を復元
+    const pianoRoll = document.querySelector('.piano-roll-grid') as HTMLElement;
+
+    for (const [noteId, element] of this.visibleNoteElements) {
+      const note = this.notes.find(n => n.id === noteId);
+      if (!note || !this.isNoteVisible(note)) {
+        element.remove();
+        this.visibleNoteElements.delete(noteId);
+      }
+    }
+
+    for (const note of this.notes) {
+      if (this.isNoteVisible(note) && !this.visibleNoteElements.has(note.id)) {
+        const noteElement = this.createNoteElement(note);
+        pianoRoll.appendChild(noteElement);
+        this.visibleNoteElements.set(note.id, noteElement);
+      }
+    }
+
     this.updateSelectedNotesVisual();
   }
 
@@ -1849,8 +1911,8 @@ class Sequencer {
         if (bpmSlider) bpmSlider.valueAsNumber = this.bpm;
         if (bpmValue) bpmValue.valueAsNumber = this.bpm;
         
-        // Re-render current track
-        this.renderCurrentTrack();
+        // Re-render tracks
+        this.renderTracks();
         
         // Render beats
         document.querySelectorAll('.beat').forEach(beat => beat.remove());
