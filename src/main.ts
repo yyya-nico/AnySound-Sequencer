@@ -463,7 +463,8 @@ class Sequencer {
       const newQuantization = parseFloat((e.target as HTMLSelectElement).value);
       this.quantization = newQuantization;
       document.querySelectorAll('.beat').forEach(beat => beat.remove());
-      this.renderBeats();
+      this.createBeats();
+      this.beats.forEach(beat => this.renderBeat(beat));
     });
 
     // Audio file inputs
@@ -837,17 +838,7 @@ class Sequencer {
       const scrollLeft = target.scrollLeft;
       document.querySelector('.piano-roll-section')!.scrollTo({ left: scrollLeft });
     });
-    document.querySelectorAll('.rhythm-grid').forEach((grid, trackIndex) => {
-      // Create beats grid
-      for (let i = 0; i < this.gridSize; i++) {
-        const beatElement = document.createElement('div');
-        beatElement.className = 'beat';
-        beatElement.dataset.position = i.toString();
-        beatElement.dataset.track = trackIndex.toString();
-
-        grid.appendChild(beatElement);
-      }
-    });
+    this.createBeats();
 
     let isPointerDown = false;
     let shoudRemove = false
@@ -1054,7 +1045,8 @@ class Sequencer {
     if (savedQuantization !== null && !isNaN(savedQuantization)) {
       this.quantization = savedQuantization;
       document.querySelectorAll('.beat').forEach(beat => beat.remove());
-      this.renderBeats();
+      this.createBeats();
+      this.beats.forEach(beat => this.renderBeat(beat));
       const quantizationSelect = document.getElementById('quantization-select') as HTMLSelectElement;
       if (quantizationSelect) quantizationSelect.value = this.quantization.toString();
     }
@@ -1339,7 +1331,7 @@ class Sequencer {
     document.querySelector(`[data-track="${track}"] [data-position="${position}"]`)?.classList.remove('active');
   }
 
-  private renderBeats() {
+  private createBeats() {
     const adjustedQuantization = this.quantization > 0 ? this.quantization : 0.1;
     document.querySelectorAll('.rhythm-grid').forEach((grid, trackIndex) => {
       // Create beats grid
@@ -1352,11 +1344,11 @@ class Sequencer {
         grid.appendChild(beatElement);
       }
     });
-    // Render beats
-    this.beats.forEach(beat => {
-      document.querySelector(`[data-track="${beat.track}"] [data-position="${beat.position}"]`)?.classList.add('active');
-    });
     (document.querySelector('.sequencer-container') as HTMLElement)?.style.setProperty('--quantization', adjustedQuantization.toString());
+  }
+
+  private renderBeat(beat: Beat) {
+    document.querySelector(`[data-track="${beat.track}"] [data-position="${beat.position}"]`)?.classList.add('active');
   }
 
   private renderCurrentTrack() {
