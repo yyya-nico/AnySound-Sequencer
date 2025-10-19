@@ -766,7 +766,16 @@ class Sequencer {
     let beforePos = 0;
     let initialRelativeX = 0;
     let beforePaused = true;
-    
+
+    playbackPosition.addEventListener('pointerenter', () => {
+      playbackPosition.classList.add('hover');
+    });
+
+    playbackPosition.addEventListener('pointerleave', () => {
+      if (playbackDragging) return;
+      playbackPosition.classList.remove('hover');
+    });
+
     playbackPosition.addEventListener('pointerdown', (e) => {
       if (!e.isPrimary || e.button !== 0) return; // 左クリックのみ
       beforePaused = this.paused;
@@ -813,6 +822,7 @@ class Sequencer {
       if (!playbackDragging || !e.isPrimary || e.button !== 0) return;
       if (!beforePaused) this.play();
       playbackDragging = false;
+      playbackPosition.classList.remove('hover');
       pianoRoll.classList.remove('playback-drag');
     });
   }

@@ -499,7 +499,7 @@ header {
     transition: inherit;
   }
 
-  &:hover {
+  &.hover {
     background: #afafaf;
 
     &::after {
