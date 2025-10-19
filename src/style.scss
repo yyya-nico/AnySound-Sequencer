@@ -868,7 +868,7 @@ header {
   }
 
   // 非アクティブなトラックのノート
-  %inactive {
+  &%inactive {
     cursor: default;
     pointer-events: none;
 
