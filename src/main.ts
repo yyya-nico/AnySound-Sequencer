@@ -462,11 +462,12 @@ class Sequencer {
     quantizationSelect?.addEventListener('change', (e) => {
       const newQuantization = parseFloat((e.target as HTMLSelectElement).value);
       this.quantization = newQuantization;
+      const adjustedQuantization = this.quantization > 0 ? this.quantization : 0.1;
       document.querySelectorAll('.rhythm-grid').forEach((grid, trackIndex) => {
         // Clear existing beats
         grid.textContent = '';
         // Create beats grid
-        for (let i = 0; i < this.gridSize; i+=(this.quantization > 0 ? this.quantization : 0.1)) {
+        for (let i = 0; i < this.gridSize; i += adjustedQuantization) {
           const beatElement = document.createElement('div');
           beatElement.className = 'beat';
           beatElement.dataset.position = i.toString();
@@ -483,7 +484,7 @@ class Sequencer {
       this.beats.forEach(beat => {
         document.querySelector(`[data-track="${beat.track}"] [data-position="${beat.position}"]`)?.classList.add('active');
       });
-      sequencerContainer.style.setProperty('--quantization', this.quantization.toString());
+      (document.querySelector('.sequencer-container') as HTMLElement)?.style.setProperty('--quantization', adjustedQuantization.toString());
     });
 
     // Audio file inputs
@@ -1027,11 +1028,12 @@ class Sequencer {
 
     if (savedQuantization !== null && !isNaN(savedQuantization)) {
       this.quantization = savedQuantization;
+      const adjustedQuantization = this.quantization > 0 ? this.quantization : 0.1;
       document.querySelectorAll('.rhythm-grid').forEach((grid, trackIndex) => {
         // Clear existing beats
         grid.textContent = '';
         // Create beats grid
-        for (let i = 0; i < this.gridSize; i+=(this.quantization > 0 ? this.quantization : 0.1)) {
+        for (let i = 0; i < this.gridSize; i += adjustedQuantization) {
           const beatElement = document.createElement('div');
           beatElement.className = 'beat';
           beatElement.dataset.position = i.toString();
@@ -1048,7 +1050,7 @@ class Sequencer {
       this.beats.forEach(beat => {
         document.querySelector(`[data-track="${beat.track}"] [data-position="${beat.position}"]`)?.classList.add('active');
       });
-      (document.querySelector('.sequencer-container') as HTMLElement)?.style.setProperty('--quantization', this.quantization.toString());
+      (document.querySelector('.sequencer-container') as HTMLElement)?.style.setProperty('--quantization', adjustedQuantization.toString());
       const quantizationSelect = document.getElementById('quantization-select') as HTMLSelectElement;
       if (quantizationSelect) quantizationSelect.value = this.quantization.toString();
     }
