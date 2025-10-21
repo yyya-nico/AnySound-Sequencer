@@ -832,6 +832,7 @@ header {
   position: absolute;
   top: calc(var(--height-per-note) * (108 - var(--pitch)));
   left: calc(var(--width-per-note) * var(--start));
+  z-index: 1;
   background: #66ccff;
   border: 1px solid #4da6d9;
   border-radius: 3px;
@@ -869,6 +870,7 @@ header {
 
   // 非アクティブなトラックのノート
   &%inactive {
+    z-index: auto;
     cursor: default;
     pointer-events: none;
 
