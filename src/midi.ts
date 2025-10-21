@@ -492,7 +492,7 @@ export class MidiConverter {
     let detectedEndOfTrack = 0;
 
     for (const track of midiFile.tracks) {
-      const activeNotes = new Map<number, {start: number; velocity: number; channel: number}>();
+      const activeNotesByChannel = new Map<number, Map<number, {start: number; velocity: number}>>(); // channel -> note -> {start, velocity}
       
       let currentTicks = 0;
 
@@ -503,38 +503,49 @@ export class MidiConverter {
         if (event.type === 'meta' && event.metaType === 0x51 && event.data) {
           // Extract tempo
           detectedBpm = this.extractBpmFromTempoData(event.data);
-        } else if (event.type === 'noteOn' && event.note !== undefined && event.velocity !== undefined) {
-          activeNotes.set(event.note, {
+        } else if (event.type === 'noteOn' && event.note !== undefined && event.velocity !== undefined && event.velocity > 0) {
+          const channel = event.channel || 0;
+          
+          if (!activeNotesByChannel.has(channel)) {
+            activeNotesByChannel.set(channel, new Map());
+          }
+          
+          const channelNotes = activeNotesByChannel.get(channel)!;
+          channelNotes.set(event.note, {
             start: currentBeats,
-            velocity: event.velocity,
-            channel: event.channel || 0
+            velocity: event.velocity
           });
-        } else if (event.type === 'noteOff' && event.note !== undefined) {
-          const noteInfo = activeNotes.get(event.note);
-          if (noteInfo) {
-            const length = Math.max(0.1, currentBeats - noteInfo.start);
-            
-            if (noteInfo.channel === 9) {
-              // Percussion track
-              beats.push({
-                id: `beat-${Date.now()}-${Math.random()}`,
-                track: event.note === 36 ? 1 : 0,
-                position: noteInfo.start,
-                velocity: noteInfo.velocity
-              });
-            } else {
-              // Regular note
-              notes.push({
-                id: `note-${Date.now()}-${Math.random()}`,
-                track: noteInfo.channel,
-                pitch: event.note,
-                start: noteInfo.start,
-                length,
-                velocity: noteInfo.velocity
-              });
+        } else if ((event.type === 'noteOff' || (event.type === 'noteOn' && event.velocity === 0)) && event.note !== undefined) {
+          const channel = event.channel || 0;
+          const channelNotes = activeNotesByChannel.get(channel);
+          
+          if (channelNotes) {
+            const noteInfo = channelNotes.get(event.note);
+            if (noteInfo) {
+              const length = Math.max(0.1, currentBeats - noteInfo.start);
+              
+              if (channel === 9) {
+                // Percussion track (MIDI channel 10)
+                beats.push({
+                  id: `beat-${Date.now()}-${Math.random()}`,
+                  track: event.note === 36 ? 1 : 0, // Bass drum or snare
+                  position: noteInfo.start,
+                  velocity: noteInfo.velocity
+                });
+              } else {
+                // Regular note
+                notes.push({
+                  id: `note-${Date.now()}-${Math.random()}`,
+                  track: channel,
+                  pitch: event.note,
+                  start: noteInfo.start,
+                  length,
+                  velocity: noteInfo.velocity
+                });
+              }
+              
+              channelNotes.delete(event.note);
             }
-            
-            activeNotes.delete(event.note);
           }
         } else if (event.type === 'meta' && event.metaType === 0x2F) {
           // End of track
