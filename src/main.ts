@@ -1195,6 +1195,17 @@ class Sequencer {
 
     if (savedAudioFiles) {
       this.files = savedAudioFiles;
+      if (this.files.melody) {
+        this.files.melody.forEach((file, track) => {
+          this.audioManager.setMelodySample(track, file);
+        });
+      }
+      if (this.files.beat1) {
+        this.audioManager.setBeatSample(0, this.files.beat1);
+      }
+      if (this.files.beat2) {
+        this.audioManager.setBeatSample(1, this.files.beat2);
+      }
       const soundButtonsContainers = document.querySelectorAll('.sound');
       const pitchShiftLabel = document.querySelector('.pitch-shift-label') as HTMLElement;
       soundButtonsContainers.forEach(container => {
@@ -1217,11 +1228,6 @@ class Sequencer {
           soundBtn.innerText = filenameToName(file?.name || '');
           if (track === 'melody') {
             pitchShiftLabel.hidden = false;
-            this.audioManager.setMelodySample(this.currentTrack, file);
-          } else if (track === 'beat1') {
-            this.audioManager.setBeatSample(0, file);
-          } else if (track === 'beat2') {
-            this.audioManager.setBeatSample(1, file);
           }
         }
         if (sineBtn) sineBtn.hidden = false;
