@@ -1662,7 +1662,10 @@ class Sequencer {
         });
       }
     });
-    
+
+    let lastPreviewPitch = -1;
+    const movePreviewId = `move-preview-${Date.now()}`;
+
     const moveHandler = (moveEvent: PointerEvent) => {
       const currentRect = pianoRoll.getBoundingClientRect();
       const currentX = moveEvent.clientX - currentRect.left;
@@ -1681,13 +1684,24 @@ class Sequencer {
         } else {
           newStart = Math.max(0, multipleFloor(initialStart + deltaBeat, this.quantization));
         }
-        const newPitch = Math.max(21, Math.min(108, initialPitch + deltaPitch));
-        
+        const newPitch = minmax(initialPitch + deltaPitch, 21, 108);
         this.moveNote(note.id, newStart, newPitch);
       });
+
+      const firstNoteData = Array.from(selectedNotesData.values())[0];
+      if (firstNoteData) {
+        const newPitch = minmax(firstNoteData.initialPitch + deltaPitch, 21, 108);
+        if (newPitch !== lastPreviewPitch) {
+          this.audioManager.playNotePreview(firstNoteData.note, this.bpm * this.playbackSpeed, movePreviewId);
+          lastPreviewPitch = newPitch;
+        }
+      }
+
+      this.scrollByDragging(moveEvent);
     };
     
     const upHandler = () => {
+      this.audioManager.stopPreview(movePreviewId);
       document.removeEventListener('pointermove', moveHandler);
       document.removeEventListener('pointerup', upHandler);
     };
