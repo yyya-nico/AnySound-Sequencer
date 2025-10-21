@@ -370,22 +370,28 @@ export class MidiConverter {
 
     // Convert note tracks
     if (notes.length > 0) {
-      const events: MidiEvent[] = [];
-      
-      // Convert notes to MIDI events
+      // Group notes by track (channel)
+      const notesByTrack = new Map<number, MidiEvent[]>();
+
       for (const note of notes) {
         const startTicks = Math.round(note.start * ticksPerBeat);
         const endTicks = Math.round((note.start + note.length) * ticksPerBeat);
-        
-        events.push({
+
+        if (!notesByTrack.has(note.track)) {
+          notesByTrack.set(note.track, []);
+        }
+
+        const trackEvents = notesByTrack.get(note.track)!;
+
+        trackEvents.push({
           deltaTime: startTicks,
           type: 'noteOn',
           channel: note.track,
           note: note.pitch,
           velocity: note.velocity
         });
-        
-        events.push({
+
+        trackEvents.push({
           deltaTime: endTicks,
           type: 'noteOff',
           channel: note.track,
@@ -394,25 +400,31 @@ export class MidiConverter {
         });
       }
 
-      // Sort events by time and calculate delta times
-      events.sort((a, b) => a.deltaTime - b.deltaTime);
-      
-      let lastTime = 0;
-      for (const event of events) {
-        const absoluteTime = event.deltaTime;
-        event.deltaTime = absoluteTime - lastTime;
-        lastTime = absoluteTime;
+      // Process each track's events
+      const sortedTrackNumbers = Array.from(notesByTrack.keys()).sort((a, b) => a - b);
+      for (const trackNumber of sortedTrackNumbers) {
+        const trackEvents = notesByTrack.get(trackNumber)!;
+        
+        // Sort events by time and calculate delta times
+        trackEvents.sort((a, b) => a.deltaTime - b.deltaTime);
+
+        let lastTime = 0;
+        for (const event of trackEvents) {
+          const absoluteTime = event.deltaTime;
+          event.deltaTime = absoluteTime - lastTime;
+          lastTime = absoluteTime;
+        }
+
+        // Add end of track
+        trackEvents.push({
+          deltaTime: 0,
+          type: 'meta',
+          metaType: 0x2F,
+          data: new Uint8Array(0)
+        });
+
+        midiFile.tracks.push({ events: trackEvents });
       }
-
-      // Add end of track
-      events.push({
-        deltaTime: 0,
-        type: 'meta',
-        metaType: 0x2F,
-        data: new Uint8Array(0)
-      });
-
-      midiFile.tracks.push({ events });
     }
 
     // Convert beat tracks to percussion (channel 9)
