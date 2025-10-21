@@ -489,10 +489,9 @@ export class MidiConverter {
     
     const ticksPerBeat = midiFile.ticksPerQuarter;
     let detectedBpm = bpm;
-    let detectedEndOfTrack = 0 ;
+    let detectedEndOfTrack = 0;
 
-    for (let trackIndex = 0; trackIndex < midiFile.tracks.length; trackIndex++) {
-      const track = midiFile.tracks[trackIndex];
+    for (const track of midiFile.tracks) {
       const activeNotes = new Map<number, {start: number; velocity: number; channel: number}>();
       
       let currentTicks = 0;
@@ -523,7 +522,6 @@ export class MidiConverter {
                 position: noteInfo.start,
                 velocity: noteInfo.velocity
               });
-              detectedEndOfTrack = Math.max(detectedEndOfTrack, noteInfo.start + 1);
             } else {
               // Regular note
               notes.push({
@@ -534,10 +532,14 @@ export class MidiConverter {
                 length,
                 velocity: noteInfo.velocity
               });
-              detectedEndOfTrack = Math.max(detectedEndOfTrack, noteInfo.start + length);
             }
             
             activeNotes.delete(event.note);
+          }
+        } else if (event.type === 'meta' && event.metaType === 0x2F) {
+          // End of track
+          if (currentBeats > detectedEndOfTrack) {
+            detectedEndOfTrack = currentBeats;
           }
         }
       }
