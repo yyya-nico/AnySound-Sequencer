@@ -555,8 +555,12 @@ class Sequencer {
     });
 
     document.getElementById('melody-pitch-shift')?.addEventListener('input', (e) => {
-      const pitchShift = (e.target as HTMLInputElement).valueAsNumber || 0;
       const filename = this.filenames.melody.get(this.currentTrack) || 'sine';
+      const audioFile = this.files.find(f => f.file.name === filename) || null;
+      const pitchShift = (e.target as HTMLInputElement).valueAsNumber || 0;
+      if (audioFile) {
+        audioFile.pitchShift = pitchShift;
+      }
       this.audioManager.setMelodyPitchShift(filename, pitchShift);
 
       const noteId = `preview-pitch-shift-${Date.now()}`
@@ -1278,9 +1282,10 @@ class Sequencer {
       }
       this.files = savedAudioFiles;
 
-      // 全ての音源ファイルをAudioManagerに登録
-      this.files.forEach(audioFile => {
-        this.audioManager.setMelodyAudio(audioFile.file);
+      // オーディオマネージャーに音源をセット
+      this.files.forEach(({ file, pitchShift }) => {
+        this.audioManager.setMelodyAudio(file);
+        this.audioManager.setMelodyPitchShift(file.name, pitchShift);
       });
 
       // すべてのサウンドセレクトにオプションを追加
@@ -1303,7 +1308,7 @@ class Sequencer {
             const filenames = value as Map<number, string>;
             filenames.forEach((filename, track) => {
               const audioFile = this.files.find(f => f.file.name === filename) || null;
-              if (audioFile && track === this.currentTrack && audioFile.pitchShift) {      
+              if (audioFile && track === this.currentTrack && audioFile.pitchShift) {
                 const pitchShiftInput = document.getElementById('melody-pitch-shift') as HTMLInputElement;
                 if (pitchShiftInput) pitchShiftInput.valueAsNumber = audioFile.pitchShift;
               }
