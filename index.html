@@ -32,7 +32,6 @@
               <span data-i18n="pitch_shift">Pitch Shift</span>
               <input type="number" id="melody-pitch-shift">
             </label>
-            <button class="remove-sound-btn danger" data-i18n="remove_sound" hidden>Remove Sound</button>
           </div>
           <div class="playback-position"></div>
           <div class="piano-roll-grid grid">
@@ -57,7 +56,6 @@
                   <hr>
                   <option value="add-sound" data-i18n="add_sound">Add Sound Source File...</option>
                 </select>
-                <button class="remove-sound-btn danger" data-i18n="remove_sound" hidden>Remove Sound</button>
               </div>
               <div class="rhythm-grid"></div>
             </div>
@@ -68,7 +66,6 @@
                   <hr>
                   <option value="add-sound" data-i18n="add_sound">Add Sound Source File...</option>
                 </select>
-                <button class="remove-sound-btn danger" data-i18n="remove_sound" hidden>Remove Sound</button>
               </div>
               <div class="rhythm-grid"></div>
             </div>
@@ -130,9 +127,13 @@
             <div class="export-midi">
               <button id="export-midi-btn" data-i18n="export_midi">Export MIDI</button>
             </div>
+            <!-- 音源ファイル全消去 -->
+            <div class="clear-sounds-button">
+              <button id="clear-sounds-btn" class="danger" data-i18n="clear_sounds">Clear Sound Sources</button>
+            </div>
             <!-- 全消去 -->
-            <div class="clear-button">
-              <button id="clear-btn" class="danger" data-i18n="clear_all">Clear All</button>
+            <div class="clear-all-button">
+              <button id="clear-all-btn" class="danger" data-i18n="clear_all">Clear All</button>
             </div>
           </div>
         </div>

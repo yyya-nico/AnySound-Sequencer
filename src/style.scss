@@ -770,7 +770,8 @@ header {
 
 .import-midi,
 .export-midi,
-.clear-button {
+.clear-sounds-button,
+.clear-all-button {
   grid-column: 1 / -1;
 
   button {
