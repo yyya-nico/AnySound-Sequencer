@@ -43,10 +43,7 @@ function updateTranslations() {
 
   // Update drop messages
   (document.querySelectorAll('[data-i18n-drop]') as NodeListOf<HTMLElement>).forEach(element => {
-    const key = element.dataset.i18nDrop;
-    if (key) {
-      element.dataset.dropMessage = i18next.t(key);
-    }
+    element.dataset.dropMessage = i18next.t('drop_sound_or_midi');
   });
 
   // Update document title
@@ -654,14 +651,16 @@ class Sequencer {
 
   private handleFileDrop(file: File, dropZone: HTMLElement) {
     const fileExtension = file.name.toLowerCase().split('.').pop();
-    const isAudioFile = file.type.startsWith('audio/') && file.type !== 'audio/midi' || 
+    const isMidiFile = file.type === 'audio/midi' || file.type === 'audio/x-midi' || fileExtension === 'mid' || fileExtension === 'midi';
+    const isAudioFile = file.type.startsWith('audio/') || 
       ['mp3', 'wav', 'ogg', 'aac', 'm4a', 'flac'].includes(fileExtension || '');
 
-    // Track-specific drop - only accept audio files
-    if (isAudioFile) {
+    if (isMidiFile) {
+      this.importMidiFromFile(file);
+    } else if (isAudioFile) {
+      this.addAudioFile(file);
       const trackType = this.getTrackTypeFromDropZone(dropZone);
       if (trackType) {
-        this.addAudioFile(file);
         this.setAudio(trackType, file.name);
       }
     } else {
@@ -1999,63 +1998,67 @@ class Sequencer {
     }
   }
 
+  private async importMidiFromFile(file: File) {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const data = new Uint8Array(arrayBuffer);
+      
+      const parser = new MidiParser(data);
+      const midiFile = parser.parse();
+      
+      // Convert MIDI to sequencer format
+      const sequencerData = MidiConverter.midiToSequencer(midiFile, this.bpm);
+      
+      // Clear existing data
+      this.stop();
+      this.notes = [];
+      this.beats = [];
+      
+      // Load converted data
+      this.notes = sequencerData.notes;
+      this.beats = sequencerData.beats;
+      this.bpm = sequencerData.bpm;
+      this.gridSize = Math.max(64, sequencerData.gridSize);
+      
+      // Update UI
+      const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
+      const bpmSlider = document.getElementById('bpm-slider') as HTMLInputElement;
+      const bpmValue = document.getElementById('bpm-value') as HTMLInputElement;
+      if (sequencerContainer) {
+        sequencerContainer.style.setProperty('--grid-size', this.gridSize.toString());
+      }
+      if (bpmSlider) bpmSlider.valueAsNumber = this.bpm;
+      if (bpmValue) bpmValue.valueAsNumber = this.bpm;
+      
+      // Re-render tracks
+      this.renderTracks();
+      
+      // Render beats
+      document.querySelectorAll('.beat').forEach(beat => beat.remove());
+      this.createBeats();
+      this.beats.forEach(beat => this.renderBeat(beat));
+      
+      // Save data
+      this.saveData();
+      
+      console.log(`Imported MIDI file: ${file.name}`);
+    } catch (error) {
+      console.error('Error importing MIDI file:', error);
+      alert(i18next.t('import_error_invalid_midi_file'));
+    }
+  }
+
   // MIDI Import functionality
   private importMidi() {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.mid,.midi';
     
-    input.addEventListener('change', async (e) => {
+    input.addEventListener('change', (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
-      
-      try {
-        const arrayBuffer = await file.arrayBuffer();
-        const data = new Uint8Array(arrayBuffer);
-        
-        const parser = new MidiParser(data);
-        const midiFile = parser.parse();
-        
-        // Convert MIDI to sequencer format
-        const sequencerData = MidiConverter.midiToSequencer(midiFile, this.bpm);
-        
-        // Clear existing data
-        this.stop();
-        this.notes = [];
-        this.beats = [];
-        
-        // Load converted data
-        this.notes = sequencerData.notes;
-        this.beats = sequencerData.beats;
-        this.bpm = sequencerData.bpm;
-        this.gridSize = Math.max(64, sequencerData.gridSize);
-        
-        // Update UI
-        const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
-        const bpmSlider = document.getElementById('bpm-slider') as HTMLInputElement;
-        const bpmValue = document.getElementById('bpm-value') as HTMLInputElement;
-        if (sequencerContainer) {
-          sequencerContainer.style.setProperty('--grid-size', this.gridSize.toString());
-        }
-        if (bpmSlider) bpmSlider.valueAsNumber = this.bpm;
-        if (bpmValue) bpmValue.valueAsNumber = this.bpm;
-        
-        // Re-render tracks
-        this.renderTracks();
-        
-        // Render beats
-        document.querySelectorAll('.beat').forEach(beat => beat.remove());
-        this.createBeats();
-        this.beats.forEach(beat => this.renderBeat(beat));
-        
-        // Save data
-        this.saveData();
-        
-        console.log(`Imported MIDI file: ${file.name}`);
-      } catch (error) {
-        console.error('Error importing MIDI file:', error);
-        alert(i18next.t('import_error_invalid_midi_file'));
-      }
+
+      this.importMidiFromFile(file);
     });
     
     input.click();
