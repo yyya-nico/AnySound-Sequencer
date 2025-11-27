@@ -489,7 +489,8 @@ class Sequencer {
       menu.classList.toggle('is-open');
     });
     document.addEventListener('click', (e) => {
-      if (!menuContent.contains(e.target as Node) && e.target !== menuBtn) {
+      if (menuContent.contains(e.target as Node) && (e.target as Element).tagName === 'BUTTON'
+        || !menuContent.contains(e.target as Node) && e.target !== menuBtn) {
         menu.classList.remove('is-open');
       }
     });
@@ -590,12 +591,14 @@ class Sequencer {
     document.getElementById('clear-sounds-btn')?.addEventListener('click', () => {
       if (confirm(i18next.t('confirm_clear_sounds'))) {
         this.clearSounds();
+        this.saveData();
       }
     });
 
     document.getElementById('clear-all-btn')?.addEventListener('click', () => {
       if (confirm(i18next.t('confirm_clear_all'))) {
         this.clearAll();
+        this.saveData();
       }
     });
 
@@ -1569,8 +1572,6 @@ class Sequencer {
     const loopToggle = document.getElementById('loop-toggle') as HTMLInputElement;
     if (loopToggle) loopToggle.checked = true;
     this.clearSounds();
-    document.querySelector('.menu')?.classList.remove('is-open');
-    this.saveData();
   }
   
   private createNoteElement(note: Note): HTMLElement {
@@ -2072,8 +2073,6 @@ class Sequencer {
     });
     
     input.click();
-
-    document.querySelector('.menu')?.classList.remove('is-open');
   }
 
   // MIDI Export functionality
@@ -2104,8 +2103,6 @@ class Sequencer {
       console.error('Error exporting MIDI file:', error);
       alert('Error exporting MIDI file.');
     }
-
-    document.querySelector('.menu')?.classList.remove('is-open');
   }
 }
 
