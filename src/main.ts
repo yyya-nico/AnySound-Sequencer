@@ -99,6 +99,11 @@ interface Beat {
   velocity: number; // 0-127
 }
 
+interface AudioFile {
+  file: File;
+  pitchShift: number; // for melody tracks
+}
+
 interface Filenames {
   melody: Map<number, string>; // track -> filename
   beat1: string | null;
@@ -341,13 +346,12 @@ class Sequencer {
   }
   private notes: Note[] = [];
   private beats: Beat[] = [];
-  private files: File[] = [];
+  private files: AudioFile[] = [];
   private filenames: Filenames = {
     melody: new Map(),
     beat1: null,
     beat2: null
   };
-  private pitchShifts: Map<number, number> = new Map(); // track -> pitch shift
   private currentTrack: number = 0;
   private bpm: number = 120;
   private playbackSpeed: number = 1; // 0.5x, 1x, 2x
@@ -554,7 +558,10 @@ class Sequencer {
 
     document.getElementById('melody-pitch-shift')?.addEventListener('input', (e) => {
       const pitchShift = (e.target as HTMLInputElement).valueAsNumber || 0;
-      this.pitchShifts.set(this.currentTrack, pitchShift);
+      const audioFile = this.getAudioFileByTrack('melody');
+      if (audioFile) {
+        audioFile.pitchShift = pitchShift;
+      }
       this.audioManager.setMelodyPitchShift(this.currentTrack, pitchShift);
 
       const noteId = `preview-pitch-shift-${Date.now()}`
@@ -681,10 +688,10 @@ class Sequencer {
 
   private addAudioFile(file: File) {
     // すでに同じ名前のファイルがある場合は追加しない
-    if (this.files.find(f => f.name === file.name)) {
+    if (this.files.find(f => f.file.name === file.name)) {
       return;
     }
-    this.files.push(file);
+    this.files.push({ file, pitchShift: 0 });
 
     // すべてのサウンドセレクトにオプションを追加
     const soundSelects = document.querySelectorAll('.sound-select') as NodeListOf<HTMLSelectElement>;
@@ -699,6 +706,20 @@ class Sequencer {
     });
   }
 
+  private getAudioFileByTrack(track: string): AudioFile | null {
+    let filename: string | null = null;
+    if (track === 'melody') {
+      filename = this.filenames.melody.get(this.currentTrack) || null;
+    } else if (track === 'beat1') {
+      filename = this.filenames.beat1;
+    } else if (track === 'beat2') {
+      filename = this.filenames.beat2;
+    }
+    if (!filename) return null;
+    const audioFile = this.files.find(f => f.file.name === filename) || null;
+    return audioFile;
+  }
+
   private removeAudioFile(filename: string) {
     if (filename === 'sine' || filename === 'add-sound') return;
     const soundSelects = document.querySelectorAll('.sound-select') as NodeListOf<HTMLSelectElement>;
@@ -711,7 +732,7 @@ class Sequencer {
     });
 
     // ファイルリストから削除
-    this.files = this.files.filter(f => f.name !== filename);
+    this.files = this.files.filter(f => f.file.name !== filename);
     
     this.filenames.melody.forEach((name, track) => {
       if (name === filename) {
@@ -742,7 +763,7 @@ class Sequencer {
 
     const file = (() => {
       if (isSine) return null;
-      return this.files.find(f => f.name === filename) || null;
+      return this.files.find(f => f.file.name === filename)?.file || null;
     })();
     removeSoundBtn.hidden = isSine;
     
@@ -1218,9 +1239,8 @@ class Sequencer {
     const savedBpm = await localForage.getItem<number>('bpm');
     const savedPlaybackSpeed = await localForage.getItem<number>('playbackSpeed');
     const savedQuantization = await localForage.getItem<number>('quantization');
-    const savedAudioFiles = await localForage.getItem<File[]>('audioFiles');
+    const savedAudioFiles = await localForage.getItem<AudioFile[]>('audioFiles');
     const savedAudioFilenames = await localForage.getItem<Filenames>('audioFilenames');
-    const savedMelodyPitchShifts = await localForage.getItem<Map<number, number>>('melodyPitchShifts');
     const savedGridSize = await localForage.getItem<number>('gridSize');
 
     if (savedGridSize) {
@@ -1274,7 +1294,7 @@ class Sequencer {
       // すべてのサウンドセレクトにオプションを追加
       const soundSelects = document.querySelectorAll('.sound-select') as NodeListOf<HTMLSelectElement>;
       soundSelects.forEach(soundSelect => {
-        this.files.forEach(file => {
+        this.files.forEach(({ file }) => {
           const option = document.createElement('option');
           option.value = file.name;
           option.text = filenameToName(file.name);
@@ -1290,9 +1310,14 @@ class Sequencer {
           if (track === 'melody') {
             const filenames = value as Map<number, string>;
             filenames.forEach((filename, track) => {
-              const file = this.files.find(f => f.name === filename);
-              if (file) {
-                this.audioManager.setMelodySample(track, file);
+              const audioFile = this.files.find(f => f.file.name === filename) || null;
+              if (audioFile) {
+                this.audioManager.setMelodySample(track, audioFile.file);
+                this.audioManager.setMelodyPitchShift(track, audioFile.pitchShift);
+                if (track === this.currentTrack && audioFile.pitchShift) {      
+                  const pitchShiftInput = document.getElementById('melody-pitch-shift') as HTMLInputElement;
+                  if (pitchShiftInput) pitchShiftInput.valueAsNumber = audioFile.pitchShift;
+                }
               }
             });
             const container = document.querySelector(`.sound[data-track="melody"]`) as HTMLElement;
@@ -1306,7 +1331,7 @@ class Sequencer {
             pitchShiftLabel.hidden = isSine;
           } else if (track === 'beat1') {
             const filename = value as string;
-            const file = this.files.find(f => f.name === filename);
+            const file = this.files.find(f => f.file.name === filename)?.file || null;
             if (file) {
               this.audioManager.setBeatSample(0, file);
             }
@@ -1318,7 +1343,7 @@ class Sequencer {
             removeSoundBtn.hidden = isSine;
           } else if (track === 'beat2') {
             const filename = value as string;
-            const file = this.files.find(f => f.name === filename);
+            const file = this.files.find(f => f.file.name === filename)?.file || null;
             if (file) {
               this.audioManager.setBeatSample(1, file);
             }
@@ -1331,15 +1356,6 @@ class Sequencer {
           }
         });
       }
-    }
-
-    if (savedMelodyPitchShifts) {
-      this.pitchShifts = savedMelodyPitchShifts;
-      this.pitchShifts.forEach((pitchShift, track) => {
-        this.audioManager.setMelodyPitchShift(track, pitchShift);
-      });
-      const pitchShiftInput = document.getElementById('melody-pitch-shift') as HTMLInputElement;
-      if (pitchShiftInput) pitchShiftInput.valueAsNumber = this.pitchShifts.get(this.currentTrack) || 0;
     }
 
     this.renderTracks();
@@ -1402,7 +1418,6 @@ class Sequencer {
     localForage.setItem('quantization', this.quantization);
     localForage.setItem('audioFiles', this.files);
     localForage.setItem('audioFilenames', this.filenames);
-    localForage.setItem('melodyPitchShifts', this.pitchShifts);
     localForage.setItem('gridSize', this.gridSize);
   }
 
@@ -1430,9 +1445,11 @@ class Sequencer {
     soundSelect.value = filename;
     removeSoundBtn.hidden = isSine;
     pitchShiftLabel.hidden = isSine;
-
-    const pitchShiftInput = document.getElementById('melody-pitch-shift') as HTMLInputElement;
-    if (pitchShiftInput) pitchShiftInput.valueAsNumber = this.pitchShifts.get(this.currentTrack) || 0;
+    const audioFile = this.files.find(f => f.file.name === filename) || null;
+    if (audioFile) {
+      const pitchShiftInput = document.getElementById('melody-pitch-shift') as HTMLInputElement;
+      if (pitchShiftInput) pitchShiftInput.valueAsNumber = audioFile.pitchShift;
+    }
     
     // Clear selected notes when switching tracks
     this.selectedNotes.clear();
@@ -1510,7 +1527,6 @@ class Sequencer {
       beat1: null,
       beat2: null
     };
-    this.pitchShifts = new Map<number, number>();
     this.gridSize = 64;
     for (let i = 0; i < 16; i++) {
       this.audioManager.setMelodySample(i, null);
