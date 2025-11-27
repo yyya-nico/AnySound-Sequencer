@@ -1093,10 +1093,15 @@ class Sequencer {
     const melodyTrackList = document.getElementById('track-selector');
     if (!melodyTrackList) return;
 
+    let moveStrage = 0;
     melodyTrackList.addEventListener('wheel', (e: WheelEvent) => {
       e.preventDefault();
-      const direction = e.deltaY > 0 ? 1 : -1;
+      moveStrage += e.deltaY;
+      console.log(e.deltaY, moveStrage);
+      if (Math.abs(moveStrage) < 20) return;
+      const direction = moveStrage > 0 ? 1 : -1;
       this.switchToNextTrack(direction);
+      moveStrage = 0;
     });
 
     let isPointerDown = false;
