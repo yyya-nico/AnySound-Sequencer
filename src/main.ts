@@ -169,8 +169,8 @@ class AudioManager {
     return this.context.decodeAudioData(arrayBuffer);
   }
 
-  setMelodyAudio(audioFile: AudioFile) {
-    const { file, pitchShift } = audioFile;
+  setMelodyAudio(file: File | null) {
+    if (!file) return;
     const filename = file.name;
     this.melodySamples.set(filename, new Map());
     this.loadFile(file).then(buffer => {
@@ -178,12 +178,15 @@ class AudioManager {
         this.melodySamples.get(filename)?.set(note, { buffer, type: 'file' });
       }
     });
-    this.melodyPitchShifts.set(filename, pitchShift);
   }
 
   deleteMelodyAudio(filename: string) {
     this.melodySamples.delete(filename);
     this.melodyPitchShifts.delete(filename);
+  }
+
+  setMelodyPitchShift(filename: string, pitchShift: number) {
+    this.melodyPitchShifts.set(filename, pitchShift);
   }
 
   setBeatSample(track: number, file: File | null) {
@@ -382,23 +385,6 @@ class Sequencer {
     return this.filenames.melody.get(track) || 'sine';
   }
 
-  private getAudioFileByTrack(trackType: string): AudioFile | null {
-    if (trackType === 'melody') {
-      const filename = this.filenames.melody.get(this.currentTrack);
-      if (!filename) return null;
-      return this.files.find(f => f.file.name === filename) || null;
-    } else if (trackType === 'beat1') {
-      const filename = this.filenames.beat1;
-      if (!filename) return null;
-      return this.files.find(f => f.file.name === filename) || null;
-    } else if (trackType === 'beat2') {
-      const filename = this.filenames.beat2;
-      if (!filename) return null;
-      return this.files.find(f => f.file.name === filename) || null;
-    }
-    return null;
-  }
-
   private setupEventListeners() {
     // Playback controls
     document.getElementById('prev-btn')?.addEventListener('click', () => {
@@ -554,7 +540,7 @@ class Sequencer {
               return;
             }
             this.addAudioFile(file);
-            this.setAudio(track, file.name);
+            this.setAudio(track, file);
           });
         } else if (value === 'sine') {
           // 正弦波を選択
@@ -562,18 +548,16 @@ class Sequencer {
         } else {
           // 既存の音源ファイルを選択
           const filename = value;
-          this.setAudio(track, filename);
+          const file = this.files.find(f => f.file.name === filename)?.file || null;
+          this.setAudio(track, file);
         }
       });
     });
 
     document.getElementById('melody-pitch-shift')?.addEventListener('input', (e) => {
       const pitchShift = (e.target as HTMLInputElement).valueAsNumber || 0;
-      const audioFile = this.getAudioFileByTrack('melody');
-      if (audioFile) {
-        audioFile.pitchShift = pitchShift;
-        this.audioManager.setMelodyAudio(audioFile);
-      }
+      const filename = this.filenames.melody.get(this.currentTrack) || 'sine';
+      this.audioManager.setMelodyPitchShift(filename, pitchShift);
 
       const noteId = `preview-pitch-shift-${Date.now()}`
       const note: Note = {
@@ -584,7 +568,6 @@ class Sequencer {
         length: this.defaultNoteLength,
         velocity: 100
       };
-      const filename = this.getFilenameByTrack(this.currentTrack);
       this.audioManager.playNotePreview(note, filename, this.bpm * this.playbackSpeed, noteId);
     });
 
@@ -682,7 +665,7 @@ class Sequencer {
       this.addAudioFile(file);
       const trackType = this.getTrackTypeFromDropZone(dropZone);
       if (trackType) {
-        this.setAudio(trackType, file.name);
+        this.setAudio(trackType, file);
       }
     } else {
       alert(i18next.t('import_error_invalid_audio_file'));
@@ -759,32 +742,26 @@ class Sequencer {
   //   }
   // }
 
-  private setAudio(track: string, filename: string = 'sine') {
+  private setAudio(track: string, file: File | null = null) {
+    const filename = file?.name || 'sine';
+    const isSine = filename === 'sine';
     const soundButtonsContainer = document.querySelector(`.sound[data-track="${track}"]`) as HTMLElement;
     const pitchShiftLabel = document.querySelector('.pitch-shift-label') as HTMLElement;
     const soundSelect = soundButtonsContainer.querySelector('.sound-select') as HTMLSelectElement;
-    const isSine = filename === 'sine';
     
     // Select要素の選択を更新
     soundSelect.value = filename;
-
-    const audioFile = (() => {
-      if (isSine) return null;
-      return this.files.find(f => f.file.name === filename) || null;
-    })();
     
     if (track === 'melody') {
       this.filenames.melody.set(this.currentTrack, filename);
       pitchShiftLabel.hidden = isSine;
-      if (audioFile) {
-        this.audioManager.setMelodyAudio(audioFile);
-      }
+      this.audioManager.setMelodyAudio(file);
     } else if (track === 'beat1') {
       this.filenames.beat1 = filename;
-      this.audioManager.setBeatSample(0, audioFile?.file || null);
+      this.audioManager.setBeatSample(0, file);
     } else if (track === 'beat2') {
       this.filenames.beat2 = filename;
-      this.audioManager.setBeatSample(1, audioFile?.file || null);
+      this.audioManager.setBeatSample(1, file);
     }
   }
 
@@ -1303,7 +1280,7 @@ class Sequencer {
 
       // 全ての音源ファイルをAudioManagerに登録
       this.files.forEach(audioFile => {
-        this.audioManager.setMelodyAudio(audioFile);
+        this.audioManager.setMelodyAudio(audioFile.file);
       });
 
       // すべてのサウンドセレクトにオプションを追加
