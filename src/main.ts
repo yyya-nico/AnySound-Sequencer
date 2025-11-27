@@ -1263,6 +1263,10 @@ class Sequencer {
     }
 
     if (savedAudioFiles) {
+      if (!Array.isArray(savedAudioFiles)) {
+        console.error('Saved audio files data is corrupted.');
+        return;
+      }
       this.files = savedAudioFiles;
 
       // すべてのサウンドセレクトにオプションを追加
