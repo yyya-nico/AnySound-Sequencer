@@ -23,14 +23,16 @@
         <!-- ピアノロールエリア -->
         <div class="piano-roll-section drop-zone" data-track="1" data-drop-message="" data-i18n-drop="drop_sound_for_melody">
           <div class="sound" data-track="melody">
-            <button class="sound-btn" data-i18n="select_sound_source_file">
-              Select Sound Source File
-            </button>
-            <button class="sine-btn" data-i18n="back_to_sine_wave" hidden>Back to Sine Wave</button>
+            <select class="sound-select">
+              <option value="sine" data-i18n="sine_wave">Sine Wave</option>
+              <hr>
+              <option value="add-sound" data-i18n="add_sound">Add Sound Source File...</option>
+            </select>
             <label class="pitch-shift-label" for="melody-pitch-shift" hidden>
               <span data-i18n="pitch_shift">Pitch Shift</span>
               <input type="number" id="melody-pitch-shift">
             </label>
+            <button class="remove-sound-btn danger" data-i18n="remove_sound" hidden>Remove Sound</button>
           </div>
           <div class="playback-position"></div>
           <div class="piano-roll-grid grid">
@@ -50,19 +52,23 @@
           <div class="rhythm-tracks">
             <div class="rhythm-track drop-zone" data-track="0" data-drop-message="" data-i18n-drop="drop_sound_for_beat1">
               <div class="sound" data-track="beat1">
-                <button class="sound-btn" data-i18n="select_sound_source_file">
-                  Select Sound Source File
-                </button>
-                <button  class="sine-btn" data-i18n="back_to_sine_wave" hidden>Back to Sine Wave</button>
+                <select class="sound-select">
+                  <option value="sine" data-i18n="sine_wave">Sine Wave</option>
+                  <hr>
+                  <option value="add-sound" data-i18n="add_sound">Add Sound Source File...</option>
+                </select>
+                <button class="remove-sound-btn danger" data-i18n="remove_sound" hidden>Remove Sound</button>
               </div>
               <div class="rhythm-grid"></div>
             </div>
             <div class="rhythm-track drop-zone" data-track="1" data-drop-message="" data-i18n-drop="drop_sound_for_beat2">
               <div class="sound" data-track="beat2">
-                <button class="sound-btn" data-i18n="select_sound_source_file">
-                  Select Sound Source File
-                </button>
-                <button class="sine-btn" data-i18n="back_to_sine_wave" hidden>Back to Sine Wave</button>
+                <select class="sound-select">
+                  <option value="sine" data-i18n="sine_wave">Sine Wave</option>
+                  <hr>
+                  <option value="add-sound" data-i18n="add_sound">Add Sound Source File...</option>
+                </select>
+                <button class="remove-sound-btn danger" data-i18n="remove_sound" hidden>Remove Sound</button>
               </div>
               <div class="rhythm-grid"></div>
             </div>

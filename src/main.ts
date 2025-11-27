@@ -99,10 +99,10 @@ interface Beat {
   velocity: number; // 0-127
 }
 
-interface Files {
-  melody: Map<number, File>; // track -> file
-  beat1: File | null;
-  beat2: File | null;
+interface Filenames {
+  melody: Map<number, string>; // track -> filename
+  beat1: string | null;
+  beat2: string | null;
 }
 
 interface AudioSample {
@@ -341,7 +341,12 @@ class Sequencer {
   }
   private notes: Note[] = [];
   private beats: Beat[] = [];
-  private files: Files = { melody: new Map(), beat1: null, beat2: null };
+  private files: File[] = [];
+  private filenames: Filenames = {
+    melody: new Map(),
+    beat1: null,
+    beat2: null
+  };
   private pitchShifts: Map<number, number> = new Map(); // track -> pitch shift
   private currentTrack: number = 0;
   private bpm: number = 120;
@@ -492,35 +497,58 @@ class Sequencer {
     // Audio file inputs
     const soundButtonsContainers = document.querySelectorAll('.sound');
     soundButtonsContainers.forEach(container => {
-      const track = (container as HTMLElement).dataset.track;
-      const soundBtn = container.querySelector('.sound-btn') as HTMLButtonElement;
-      const sineBtn = container.querySelector('.sine-btn') as HTMLButtonElement;
-      container.addEventListener('click', (e) => {
-        const target = e.target as HTMLElement;
-        const selectAudioFile = () => {
-          const input = document.createElement('input');
-          input.type = 'file';
-          input.accept = 'audio/*';
-          const promise = new Promise<File | null>((resolve) => {
-            input.onchange = (event) => {
-              const file = (event.target as HTMLInputElement).files?.[0] || null;
-              if (!file) {
-                resolve(null);
-              }
-              resolve(file);
-            };
-          });
-          input.click();
-          return promise;
-        }
-        if (target === soundBtn) {
+      const track = (container as HTMLElement).dataset.track!;
+      const soundSelect = container.querySelector('.sound-select') as HTMLSelectElement;
+      const removeSoundBtn = container.querySelector('.remove-sound-btn') as HTMLButtonElement;
+      const selectAudioFile = () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'audio/*';
+        const promise = new Promise<File | null>((resolve) => {
+          input.onchange = (event) => {
+            const file = (event.target as HTMLInputElement).files?.[0] || null;
+            if (!file) {
+              resolve(null);
+            }
+            resolve(file);
+          };
+          input.oncancel = () => {
+            resolve(null);
+          };
+        });
+        input.click();
+        return promise;
+      }
+      soundSelect.addEventListener('change', (e) => {
+        const value = (e.target as HTMLSelectElement).value;
+        if (value === 'add-sound') {
+          // 新しい音源ファイルを追加
           selectAudioFile().then(file => {
-            if (!file) return;
-            this.setAudioFile(track!, file);
+            if (!file) {
+              // キャンセルされた場合は選択を戻す
+              if (track === 'melody') {
+                soundSelect.value = this.filenames.melody.get(this.currentTrack) || 'sine';
+              } else if (track === 'beat1') {
+                soundSelect.value = this.filenames.beat1 || 'sine';
+              } else if (track === 'beat2') {
+                soundSelect.value = this.filenames.beat2 || 'sine';
+              }
+              return;
+            }
+            this.addAudioFile(file);
+            this.setAudio(track, file.name);
           });
-        } else if (target === sineBtn) {
-          this.resetAudioFile(track!);
+        } else if (value === 'sine') {
+          // 正弦波を選択
+          this.setSine(track);
+        } else {
+          // 既存の音源ファイルを選択
+          const filename = value;
+          this.setAudio(track, filename);
         }
+      });
+      removeSoundBtn.addEventListener('click', () => {
+        this.removeAudioFile(soundSelect.value);
       });
     });
 
@@ -624,7 +652,8 @@ class Sequencer {
     if (isAudioFile) {
       const trackType = this.getTrackTypeFromDropZone(dropZone);
       if (trackType) {
-        this.setAudioFile(trackType, file);
+        this.addAudioFile(file);
+        this.setAudio(trackType, file.name);
       }
     } else {
       alert(i18next.t('import_error_invalid_audio_file'));
@@ -650,53 +679,87 @@ class Sequencer {
     return null;
   }
 
-  private setAudioFile(trackType: string, file: File) {
-    const soundButtonsContainer = document.querySelector(`.sound[data-track="${trackType}"]`) as HTMLElement;
+  private addAudioFile(file: File) {
+    // すでに同じ名前のファイルがある場合は追加しない
+    if (this.files.find(f => f.name === file.name)) {
+      return;
+    }
+    this.files.push(file);
+
+    // すべてのサウンドセレクトにオプションを追加
+    const soundSelects = document.querySelectorAll('.sound-select') as NodeListOf<HTMLSelectElement>;
+    soundSelects.forEach(soundSelect => {
+      const option = document.createElement('option');
+      option.value = file.name;
+      option.text = filenameToName(file.name);
+      const addSoundOption = soundSelect.querySelector('option[value="add-sound"]');
+      soundSelect.insertBefore(option, addSoundOption);
+    });
+  }
+
+  private removeAudioFile(filename: string) {
+    if (filename === 'sine' || filename === 'add-sound') return;
+    const soundSelects = document.querySelectorAll('.sound-select') as NodeListOf<HTMLSelectElement>;
+    soundSelects.forEach(soundSelect => {
+      // 指定のオプションを削除
+      const optionToRemove = Array.from(soundSelect.options).find(opt => opt.value === filename);
+      if (optionToRemove) {
+        optionToRemove.remove();
+      }
+    });
+
+    // ファイルリストから削除
+    this.files = this.files.filter(f => f.name !== filename);
+    
+    this.filenames.melody.forEach((name, track) => {
+      if (name === filename) {
+        if (track === this.currentTrack) {
+          this.setSine('melody');
+        } else {
+          this.filenames.melody.set(track, 'sine');
+        }
+      }
+    });
+    if (this.filenames.beat1 === filename) {
+      this.setSine('beat1');
+    }
+    if (this.filenames.beat2 === filename) {
+      this.setSine('beat2');
+    }
+  }
+
+  private setAudio(track: string, filename: string = 'sine') {
+    const soundButtonsContainer = document.querySelector(`.sound[data-track="${track}"]`) as HTMLElement;
     const pitchShiftLabel = document.querySelector('.pitch-shift-label') as HTMLElement;
-    const soundBtn = soundButtonsContainer.querySelector('.sound-btn') as HTMLButtonElement;
-    const sineBtn = soundButtonsContainer.querySelector('.sine-btn') as HTMLButtonElement;
+    const soundSelect = soundButtonsContainer.querySelector('.sound-select') as HTMLSelectElement;
+    const removeSoundBtn = soundButtonsContainer.querySelector('.remove-sound-btn') as HTMLButtonElement;
+    const isSine = filename === 'sine';
     
-    soundBtn.dataset.i18n = '';
-    soundBtn.innerText = filenameToName(file.name);
-    sineBtn.hidden = false;
+    // Select要素の選択を更新
+    soundSelect.value = filename;
+
+    const file = (() => {
+      if (isSine) return null;
+      return this.files.find(f => f.name === filename) || null;
+    })();
+    removeSoundBtn.hidden = isSine;
     
-    if (trackType === 'melody') {
-      pitchShiftLabel.hidden = false;
-      this.files.melody.set(this.currentTrack, file);
+    if (track === 'melody') {
+      this.filenames.melody.set(this.currentTrack, filename);
+      pitchShiftLabel.hidden = isSine;
       this.audioManager.setMelodySample(this.currentTrack, file);
-    } else if (trackType === 'beat1') {
-      this.files.beat1 = file;
+    } else if (track === 'beat1') {
+      this.filenames.beat1 = filename;
       this.audioManager.setBeatSample(0, file);
-    } else if (trackType === 'beat2') {
-      this.files.beat2 = file;
+    } else if (track === 'beat2') {
+      this.filenames.beat2 = filename;
       this.audioManager.setBeatSample(1, file);
     }
   }
 
-  private resetAudioFile(trackType: string) {
-    const soundButtonsContainer = document.querySelector(`.sound[data-track="${trackType}"]`) as HTMLElement;
-    const pitchShiftLabel = document.querySelector('.pitch-shift-label') as HTMLElement;
-    const soundBtn = soundButtonsContainer.querySelector('.sound-btn') as HTMLButtonElement;
-    const sineBtn = soundButtonsContainer.querySelector('.sine-btn') as HTMLButtonElement;
-    
-    soundBtn.dataset.i18n = 'select_sound_source_file';
-    soundBtn.innerText = i18next.t('select_sound_source_file');
-    sineBtn.hidden = true;
-    
-    if (trackType === 'melody') {
-      pitchShiftLabel.hidden = true;
-      this.files.melody.delete(this.currentTrack);
-      this.audioManager.setMelodySample(this.currentTrack, null);
-    } else if (trackType === 'beat1') {
-      this.files.beat1 = null;
-      this.audioManager.setBeatSample(0, null);
-    } else if (trackType === 'beat2') {
-      this.files.beat2 = null;
-      this.audioManager.setBeatSample(1, null);
-    }
+  private setSine(track: string) {
+    this.setAudio(track);
   }
-
-
 
   private initializePianoRoll() {
     const section = document.querySelector('.piano-roll-section') as HTMLElement;
@@ -1153,7 +1216,8 @@ class Sequencer {
     const savedBpm = await localForage.getItem<number>('bpm');
     const savedPlaybackSpeed = await localForage.getItem<number>('playbackSpeed');
     const savedQuantization = await localForage.getItem<number>('quantization');
-    const savedAudioFiles = await localForage.getItem<Files>('audioFiles');
+    const savedAudioFiles = await localForage.getItem<File[]>('audioFiles');
+    const savedAudioFilenames = await localForage.getItem<Filenames>('audioFilenames');
     const savedMelodyPitchShifts = await localForage.getItem<Map<number, number>>('melodyPitchShifts');
     const savedGridSize = await localForage.getItem<number>('gridSize');
 
@@ -1200,43 +1264,67 @@ class Sequencer {
 
     if (savedAudioFiles) {
       this.files = savedAudioFiles;
-      if (this.files.melody) {
-        this.files.melody.forEach((file, track) => {
-          this.audioManager.setMelodySample(track, file);
+
+      // すべてのサウンドセレクトにオプションを追加
+      const soundSelects = document.querySelectorAll('.sound-select') as NodeListOf<HTMLSelectElement>;
+      soundSelects.forEach(soundSelect => {
+        this.files.forEach(file => {
+          const option = document.createElement('option');
+          option.value = file.name;
+          option.text = filenameToName(file.name);
+          const selectHrElement = soundSelect.querySelector('hr');
+          if (selectHrElement) {
+            soundSelect.insertBefore(option, selectHrElement);
+          }
+        });
+      });
+      if (savedAudioFilenames) {
+        this.filenames = savedAudioFilenames;
+        Object.entries(savedAudioFilenames).forEach(([track, value]) => {
+          if (track === 'melody') {
+            const filenames = value as Map<number, string>;
+            filenames.forEach((filename, track) => {
+              const file = this.files.find(f => f.name === filename);
+              if (file) {
+                this.audioManager.setMelodySample(track, file);
+              }
+            });
+            const container = document.querySelector(`.sound[data-track="melody"]`) as HTMLElement;
+            const soundSelect = container.querySelector('.sound-select') as HTMLSelectElement;
+            const currentFilename = filenames.get(this.currentTrack) || 'sine';
+            soundSelect.value = currentFilename;
+            const isSine = currentFilename === 'sine';
+            const removeSoundBtn = container.querySelector('.remove-sound-btn') as HTMLButtonElement;
+            removeSoundBtn.hidden = isSine;
+            const pitchShiftLabel = document.querySelector('.pitch-shift-label') as HTMLElement;
+            pitchShiftLabel.hidden = isSine;
+          } else if (track === 'beat1') {
+            const filename = value as string;
+            const file = this.files.find(f => f.name === filename);
+            if (file) {
+              this.audioManager.setBeatSample(0, file);
+            }
+            const container = document.querySelector(`.sound[data-track="beat1"]`) as HTMLElement;
+            const soundSelect = container.querySelector('.sound-select') as HTMLSelectElement;
+            soundSelect.value = filename;
+            const isSine = filename === 'sine';
+            const removeSoundBtn = container.querySelector('.remove-sound-btn') as HTMLButtonElement;
+            removeSoundBtn.hidden = isSine;
+          } else if (track === 'beat2') {
+            const filename = value as string;
+            const file = this.files.find(f => f.name === filename);
+            if (file) {
+              this.audioManager.setBeatSample(1, file);
+            }
+            const container = document.querySelector(`.sound[data-track="beat2"]`) as HTMLElement;
+            const soundSelect = container.querySelector('.sound-select') as HTMLSelectElement;
+            soundSelect.value = filename;
+            const isSine = filename === 'sine';
+            const removeSoundBtn = container.querySelector('.remove-sound-btn') as HTMLButtonElement;
+            removeSoundBtn.hidden = isSine;
+          }
         });
       }
-      if (this.files.beat1) {
-        this.audioManager.setBeatSample(0, this.files.beat1);
-      }
-      if (this.files.beat2) {
-        this.audioManager.setBeatSample(1, this.files.beat2);
-      }
-      const soundButtonsContainers = document.querySelectorAll('.sound');
-      const pitchShiftLabel = document.querySelector('.pitch-shift-label') as HTMLElement;
-      soundButtonsContainers.forEach(container => {
-        const track = (container as HTMLElement).dataset.track;
-        const file = (() => {
-          if (track === 'melody') {
-            return this.files.melody.get(this.currentTrack) || null;
-          } else if (track === 'beat1') {
-            return this.files.beat1;
-          } else if (track === 'beat2') {
-            return this.files.beat2;
-          }
-          return null;
-        })();
-        if (!file) return;
-        const soundBtn = container.querySelector('.sound-btn') as HTMLButtonElement;
-        const sineBtn = container.querySelector('.sine-btn') as HTMLButtonElement;
-        if (soundBtn) {
-          soundBtn.dataset.i18n = '';
-          soundBtn.innerText = filenameToName(file?.name || '');
-          if (track === 'melody') {
-            pitchShiftLabel.hidden = false;
-          }
-        }
-        if (sineBtn) sineBtn.hidden = false;
-      });
     }
 
     if (savedMelodyPitchShifts) {
@@ -1307,6 +1395,7 @@ class Sequencer {
     localForage.setItem('playbackSpeed', this.playbackSpeed);
     localForage.setItem('quantization', this.quantization);
     localForage.setItem('audioFiles', this.files);
+    localForage.setItem('audioFilenames', this.filenames);
     localForage.setItem('melodyPitchShifts', this.pitchShifts);
     localForage.setItem('gridSize', this.gridSize);
   }
@@ -1325,22 +1414,16 @@ class Sequencer {
       resetAnimation(pianoRollSection, 'notify');
     }
 
-    const file = this.files.melody.get(this.currentTrack) || null;
     const melodySoundButtonsContainer = document.querySelector('.sound[data-track="melody"]') as HTMLElement;
     const pitchShiftLabel = document.querySelector('.pitch-shift-label') as HTMLElement;
-    const soundBtn = melodySoundButtonsContainer.querySelector('.sound-btn') as HTMLButtonElement;
-    const sineBtn = melodySoundButtonsContainer.querySelector('.sine-btn') as HTMLButtonElement;
-    if (file) {
-      soundBtn.dataset.i18n = '';
-      soundBtn.innerText = filenameToName(file?.name || '');
-      sineBtn.hidden = false;
-      pitchShiftLabel.hidden = false;
-    } else {
-      soundBtn.dataset.i18n = 'select_sound_source_file';
-      soundBtn.innerText = i18next.t('select_sound_source_file');
-      sineBtn.hidden = true;
-      pitchShiftLabel.hidden = true;
-    }
+    const soundSelect = melodySoundButtonsContainer.querySelector('.sound-select') as HTMLSelectElement;
+    const removeSoundBtn = melodySoundButtonsContainer.querySelector('.remove-sound-btn') as HTMLButtonElement;
+
+    const filename = this.filenames.melody.get(this.currentTrack) || 'sine';
+    const isSine = filename === 'sine';
+    soundSelect.value = filename;
+    removeSoundBtn.hidden = isSine;
+    pitchShiftLabel.hidden = isSine;
 
     const pitchShiftInput = document.getElementById('melody-pitch-shift') as HTMLInputElement;
     if (pitchShiftInput) pitchShiftInput.valueAsNumber = this.pitchShifts.get(this.currentTrack) || 0;
@@ -1415,8 +1498,9 @@ class Sequencer {
     this.beats = [];
     this.bpm = 120;
     this.playbackSpeed = 1;
-    this.files = {
-      melody: new Map<number, File>(),
+    this.files = [];
+    this.filenames = {
+      melody: new Map<number, string>(),
       beat1: null,
       beat2: null
     };
@@ -1448,13 +1532,19 @@ class Sequencer {
     if (loopToggle) loopToggle.checked = true;
     const soundButtonsContainers = document.querySelectorAll('.sound');
     soundButtonsContainers.forEach(container => {
-      const soundBtn = container.querySelector('.sound-btn') as HTMLButtonElement;
-      const sineBtn = container.querySelector('.sine-btn') as HTMLButtonElement;
-      if (soundBtn) {
-        soundBtn.dataset.i18n = 'select_sound_source_file';
-        soundBtn.innerText = i18next.t('select_sound_source_file');
-      }
-      if (sineBtn) sineBtn.hidden = true;
+      const soundSelect = container.querySelector('.sound-select') as HTMLSelectElement;
+      const removeSoundBtn = container.querySelector('.remove-sound-btn') as HTMLButtonElement;
+      
+      // Select要素から追加されたオプションを削除
+      Array.from(soundSelect.options).forEach(option => {
+        if (option.value !== 'sine' && option.value !== 'add-sound') {
+          option.remove();
+        }
+      });
+      soundSelect.value = 'sine';
+      
+      // 削除ボタンを非表示
+      if (removeSoundBtn) removeSoundBtn.hidden = true;
     });
     const pitchShiftLabel = document.querySelector('.pitch-shift-label') as HTMLElement;
     if (pitchShiftLabel) pitchShiftLabel.hidden = true;

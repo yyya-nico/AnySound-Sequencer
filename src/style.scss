@@ -404,42 +404,22 @@ header {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  justify-content: center;
   gap: 10px;
   position: sticky;
   top: 0;
   width: var(--sound-panel-width);
   padding: 10px;
 
-  .sound-btn {
-    display: grid;
-    place-items: center;
-    height: 100%;
-    background: #333;
-    border-radius: 4px;
-    padding: 8px 12px;
-    color: #ccc;
-    font-size: 13px;
+  .sound-select {
     text-align: center;
     cursor: pointer;
-
-    span {
-      width: 100%;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    &:hover {
-      background: #555;
-    }
-
-    &:active {
-      background: #111;
-    }
   }
 
-  .sine-btn {
-    padding: 6px 12px;
-    font-size: 12px;
+  .remove-sound-btn {
+    align-self: center;
+    padding: 4px 8px;
+    font-size: 10px;
   }
 
   .pitch-shift-label {
