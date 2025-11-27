@@ -116,8 +116,8 @@ interface AudioSample {
 class AudioManager {
   private context: AudioContext;
   private masterGain: GainNode;
-  private melodySamples: Map<number, Map<number, AudioSample>> = new Map();
-  private melodyPitchShifts: Map<number, number> = new Map();
+  private melodySamples: Map<string, Map<number, AudioSample>> = new Map();
+  private melodyPitchShifts: Map<string, number> = new Map();
   private beatSamples: Map<number, AudioSample> = new Map();
   private previewSources: Map<string, { source: AudioBufferSourceNode; gain: GainNode }> = new Map();
 
@@ -133,11 +133,9 @@ class AudioManager {
 
   private initializeSineWaves() {
     // Initialize melody sine waves for MIDI notes 21-108 (A0-C8)
-    for (let track = 0; track < 16; track++) {
-      this.melodySamples.set(track, new Map());
-      for (let note = 21; note <= 108; note++) {
-        this.melodySamples.get(track)?.set(note, { buffer: null, type: 'sine' });
-      }
+    this.melodySamples.set('sine', new Map());
+    for (let note = 21; note <= 108; note++) {
+      this.melodySamples.get('sine')?.set(note, { buffer: null, type: 'sine' });
     }
 
     // Initialize beat sine waves
@@ -166,33 +164,31 @@ class AudioManager {
     return Math.pow(2, (midiNote - 60 + pitchShift) / 12); // C4 as reference
   }
 
-  async loadAudioFile(file: File): Promise<AudioBuffer> {
+  async loadFile(file: File): Promise<AudioBuffer> {
     const arrayBuffer = await file.arrayBuffer();
     return this.context.decodeAudioData(arrayBuffer);
   }
 
-  setMelodySample(track: number, file: File | null) {
-    if (file) {
-      this.loadAudioFile(file).then(buffer => {
-        for (let note = 21; note <= 108; note++) {
-          this.melodySamples.get(track)?.set(note, { buffer, type: 'file' });
-        }
-      });
-    } else {
-      // Reset to sine wave
+  setMelodyAudio(audioFile: AudioFile) {
+    const { file, pitchShift } = audioFile;
+    const filename = file.name;
+    this.melodySamples.set(filename, new Map());
+    this.loadFile(file).then(buffer => {
       for (let note = 21; note <= 108; note++) {
-        this.melodySamples.get(track)?.set(note, { buffer: null, type: 'sine' });
+        this.melodySamples.get(filename)?.set(note, { buffer, type: 'file' });
       }
-    }
+    });
+    this.melodyPitchShifts.set(filename, pitchShift);
   }
 
-  setMelodyPitchShift(track: number, pitchShift: number) {
-    this.melodyPitchShifts.set(track, pitchShift);
+  deleteMelodyAudio(filename: string) {
+    this.melodySamples.delete(filename);
+    this.melodyPitchShifts.delete(filename);
   }
 
   setBeatSample(track: number, file: File | null) {
     if (file) {
-      this.loadAudioFile(file).then(buffer => {
+      this.loadFile(file).then(buffer => {
         this.beatSamples.set(track, { buffer, type: 'file' });
       });
     } else {
@@ -223,8 +219,8 @@ class AudioManager {
     });
   }
 
-  playNote(note: Note, bpm: number, when: number = 0) {
-    const sample = this.melodySamples.get(note.track)?.get(note.pitch);
+  playNote(note: Note, filename: string, bpm: number, when: number = 0) {
+    const sample = this.melodySamples.get(filename)?.get(note.pitch);
     if (!sample) return;
 
     const source = this.context.createBufferSource();
@@ -237,7 +233,7 @@ class AudioManager {
       source.buffer = this.createSineWave(frequency, durationInSeconds);
     } else {
       source.buffer = sample.buffer;
-      source.playbackRate.value = this.midiToPercentage(note.pitch, this.melodyPitchShifts.get(note.track) || 0);
+      source.playbackRate.value = this.midiToPercentage(note.pitch, this.melodyPitchShifts.get(filename) || 0);
     }
 
     gain.gain.value = (note.velocity / 127) * 0.5;
@@ -254,11 +250,11 @@ class AudioManager {
   }
 
   // プレビュー音を再生（前の音は自動停止）
-  playNotePreview(note: Note, bpm: number, previewId: string, when: number = 0) {
+  playNotePreview(note: Note, filename: string, bpm: number, previewId: string, when: number = 0) {
     // 前のプレビュー音を停止
     this.stopPreview(previewId);
 
-    const sample = this.melodySamples.get(note.track)?.get(note.pitch);
+    const sample = this.melodySamples.get(filename)?.get(note.pitch);
     if (!sample) return;
 
     const source = this.context.createBufferSource();
@@ -271,7 +267,7 @@ class AudioManager {
       source.buffer = this.createSineWave(frequency, durationInSeconds);
     } else {
       source.buffer = sample.buffer;
-      source.playbackRate.value = this.midiToPercentage(note.pitch, this.melodyPitchShifts.get(note.track) || 0);
+      source.playbackRate.value = this.midiToPercentage(note.pitch, this.melodyPitchShifts.get(filename) || 0);
     }
 
     // フェードインで開始
@@ -380,6 +376,27 @@ class Sequencer {
     this.setupTrackScrolling();
     this.updateViewPort();
     this.setupLocalForage();
+  }
+
+  private getFilenameByTrack(track: number): string {
+    return this.filenames.melody.get(track) || 'sine';
+  }
+
+  private getAudioFileByTrack(trackType: string): AudioFile | null {
+    if (trackType === 'melody') {
+      const filename = this.filenames.melody.get(this.currentTrack);
+      if (!filename) return null;
+      return this.files.find(f => f.file.name === filename) || null;
+    } else if (trackType === 'beat1') {
+      const filename = this.filenames.beat1;
+      if (!filename) return null;
+      return this.files.find(f => f.file.name === filename) || null;
+    } else if (trackType === 'beat2') {
+      const filename = this.filenames.beat2;
+      if (!filename) return null;
+      return this.files.find(f => f.file.name === filename) || null;
+    }
+    return null;
   }
 
   private setupEventListeners() {
@@ -554,8 +571,8 @@ class Sequencer {
       const audioFile = this.getAudioFileByTrack('melody');
       if (audioFile) {
         audioFile.pitchShift = pitchShift;
+        this.audioManager.setMelodyAudio(audioFile);
       }
-      this.audioManager.setMelodyPitchShift(this.currentTrack, pitchShift);
 
       const noteId = `preview-pitch-shift-${Date.now()}`
       const note: Note = {
@@ -566,7 +583,8 @@ class Sequencer {
         length: this.defaultNoteLength,
         velocity: 100
       };
-      this.audioManager.playNotePreview(note, this.bpm * this.playbackSpeed, noteId);
+      const filename = this.getFilenameByTrack(this.currentTrack);
+      this.audioManager.playNotePreview(note, filename, this.bpm * this.playbackSpeed, noteId);
     });
 
     document.getElementById('clear-sounds-btn')?.addEventListener('click', () => {
@@ -707,20 +725,6 @@ class Sequencer {
     });
   }
 
-  private getAudioFileByTrack(track: string): AudioFile | null {
-    let filename: string | null = null;
-    if (track === 'melody') {
-      filename = this.filenames.melody.get(this.currentTrack) || null;
-    } else if (track === 'beat1') {
-      filename = this.filenames.beat1;
-    } else if (track === 'beat2') {
-      filename = this.filenames.beat2;
-    }
-    if (!filename) return null;
-    const audioFile = this.files.find(f => f.file.name === filename) || null;
-    return audioFile;
-  }
-
   // private removeAudioFile(filename: string) {
   //   if (filename === 'sine' || filename === 'add-sound') return;
   //   const soundSelects = document.querySelectorAll('.sound-select') as NodeListOf<HTMLSelectElement>;
@@ -761,21 +765,23 @@ class Sequencer {
     // Select要素の選択を更新
     soundSelect.value = filename;
 
-    const file = (() => {
+    const audioFile = (() => {
       if (isSine) return null;
-      return this.files.find(f => f.file.name === filename)?.file || null;
+      return this.files.find(f => f.file.name === filename) || null;
     })();
     
     if (track === 'melody') {
       this.filenames.melody.set(this.currentTrack, filename);
       pitchShiftLabel.hidden = isSine;
-      this.audioManager.setMelodySample(this.currentTrack, file);
+      if (audioFile) {
+        this.audioManager.setMelodyAudio(audioFile);
+      }
     } else if (track === 'beat1') {
       this.filenames.beat1 = filename;
-      this.audioManager.setBeatSample(0, file);
+      this.audioManager.setBeatSample(0, audioFile?.file || null);
     } else if (track === 'beat2') {
       this.filenames.beat2 = filename;
-      this.audioManager.setBeatSample(1, file);
+      this.audioManager.setBeatSample(1, audioFile?.file || null);
     }
   }
 
@@ -892,7 +898,8 @@ class Sequencer {
       }
       
       currentPreviewId = `preview-${Date.now()}`;
-      this.audioManager.playNotePreview(currentNote, this.bpm * this.playbackSpeed, currentPreviewId);
+      const filename = this.getFilenameByTrack(currentNote.track);
+      this.audioManager.playNotePreview(currentNote, filename, this.bpm * this.playbackSpeed, currentPreviewId);
     };
 
     pianoRoll.addEventListener('pointerdown', (e) => {
@@ -1023,7 +1030,8 @@ class Sequencer {
         // Play notes at current beat
         this.notes.forEach(note => {
           if (note.start <= this.currentBeat && note.start + 0.1 > this.currentBeat && !this.playedNotes.has(note.id)) {
-            this.audioManager.playNote(note, this.bpm * this.playbackSpeed);
+            const filename = this.getFilenameByTrack(note.track);
+            this.audioManager.playNote(note, filename, this.bpm * this.playbackSpeed);
           }
         });
 
@@ -1290,6 +1298,11 @@ class Sequencer {
       }
       this.files = savedAudioFiles;
 
+      // 全ての音源ファイルをAudioManagerに登録
+      this.files.forEach(audioFile => {
+        this.audioManager.setMelodyAudio(audioFile);
+      });
+
       // すべてのサウンドセレクトにオプションを追加
       const soundSelects = document.querySelectorAll('.sound-select') as NodeListOf<HTMLSelectElement>;
       soundSelects.forEach(soundSelect => {
@@ -1310,13 +1323,9 @@ class Sequencer {
             const filenames = value as Map<number, string>;
             filenames.forEach((filename, track) => {
               const audioFile = this.files.find(f => f.file.name === filename) || null;
-              if (audioFile) {
-                this.audioManager.setMelodySample(track, audioFile.file);
-                this.audioManager.setMelodyPitchShift(track, audioFile.pitchShift);
-                if (track === this.currentTrack && audioFile.pitchShift) {      
-                  const pitchShiftInput = document.getElementById('melody-pitch-shift') as HTMLInputElement;
-                  if (pitchShiftInput) pitchShiftInput.valueAsNumber = audioFile.pitchShift;
-                }
+              if (audioFile && track === this.currentTrack && audioFile.pitchShift) {      
+                const pitchShiftInput = document.getElementById('melody-pitch-shift') as HTMLInputElement;
+                if (pitchShiftInput) pitchShiftInput.valueAsNumber = audioFile.pitchShift;
               }
             });
             const container = document.querySelector(`.sound[data-track="melody"]`) as HTMLElement;
@@ -1505,16 +1514,15 @@ class Sequencer {
   }
 
   private clearSounds() {
+    this.files.forEach(audioFile => {
+      this.audioManager.deleteMelodyAudio(audioFile.file.name);
+    });
     this.files = [];
     this.filenames = {
       melody: new Map<number, string>(),
       beat1: null,
       beat2: null
     };
-    for (let i = 0; i < 16; i++) {
-      this.audioManager.setMelodySample(i, null);
-      this.audioManager.setMelodyPitchShift(i, 0);
-    }
     this.audioManager.setBeatSample(0, null);
     this.audioManager.setBeatSample(1, null);
 
@@ -1798,7 +1806,8 @@ class Sequencer {
       if (firstNoteData) {
         const newPitch = minmax(firstNoteData.initialPitch + deltaPitch, 21, 108);
         if (newPitch !== lastPreviewPitch) {
-          this.audioManager.playNotePreview(firstNoteData.note, this.bpm * this.playbackSpeed, movePreviewId);
+          const filename = this.getFilenameByTrack(firstNoteData.note.track);
+          this.audioManager.playNotePreview(firstNoteData.note, filename, this.bpm * this.playbackSpeed, movePreviewId);
           lastPreviewPitch = newPitch;
         }
       }
@@ -1934,7 +1943,8 @@ class Sequencer {
       // Play notes at current beat
       this.notes.forEach(note => {
         if (note.start <= this.currentBeat && note.start + 0.1 > this.currentBeat && !this.playedNotes.has(note.id)) {
-          this.audioManager.playNote(note, this.bpm * this.playbackSpeed);
+          const filename = this.getFilenameByTrack(note.track);
+          this.audioManager.playNote(note, filename, this.bpm * this.playbackSpeed);
           this.playedNotes.add(note.id);
         }
       });
