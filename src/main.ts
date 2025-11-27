@@ -654,7 +654,7 @@ class Sequencer {
 
   private handleFileDrop(file: File, dropZone: HTMLElement) {
     const fileExtension = file.name.toLowerCase().split('.').pop();
-    const isAudioFile = file.type.startsWith('audio/') || 
+    const isAudioFile = file.type.startsWith('audio/') && file.type !== 'audio/midi' || 
       ['mp3', 'wav', 'ogg', 'aac', 'm4a', 'flac'].includes(fileExtension || '');
 
     // Track-specific drop - only accept audio files
