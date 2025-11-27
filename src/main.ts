@@ -692,8 +692,10 @@ class Sequencer {
       const option = document.createElement('option');
       option.value = file.name;
       option.text = filenameToName(file.name);
-      const addSoundOption = soundSelect.querySelector('option[value="add-sound"]');
-      soundSelect.insertBefore(option, addSoundOption);
+      const selectHrElement = soundSelect.querySelector('hr');
+      if (selectHrElement) {
+        soundSelect.insertBefore(option, selectHrElement);
+      }
     });
   }
 
