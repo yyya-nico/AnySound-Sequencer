@@ -1321,7 +1321,7 @@ class Sequencer {
             const pitchShiftLabel = document.querySelector('.pitch-shift-label') as HTMLElement;
             pitchShiftLabel.hidden = isSine;
           } else if (track === 'beat1') {
-            const filename = value as string;
+            const filename = value || 'sine';
             const file = this.files.find(f => f.file.name === filename)?.file || null;
             if (file) {
               this.audioManager.setBeatSample(0, file);
@@ -1330,7 +1330,7 @@ class Sequencer {
             const soundSelect = container.querySelector('.sound-select') as HTMLSelectElement;
             soundSelect.value = filename;
           } else if (track === 'beat2') {
-            const filename = value as string;
+            const filename = value || 'sine';
             const file = this.files.find(f => f.file.name === filename)?.file || null;
             if (file) {
               this.audioManager.setBeatSample(1, file);
