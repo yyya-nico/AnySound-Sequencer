@@ -1174,7 +1174,6 @@ class Sequencer {
     melodyTrackList.addEventListener('wheel', (e: WheelEvent) => {
       e.preventDefault();
       moveStrage += e.deltaY;
-      console.log(e.deltaY, moveStrage);
       if (Math.abs(moveStrage) < 20) return;
       const direction = moveStrage > 0 ? 1 : -1;
       this.switchToNextTrack(direction);
