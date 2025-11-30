@@ -33,7 +33,7 @@
   "beat_volume": "ビート音量",
   "import_midi": "MIDIをインポート",
   "import_error_invalid_midi_file": "MIDIファイルのインポート中にエラーが発生しました。ファイル形式を確認してください。",
-  "import_error_invalid_audio_file": "サポートされていないファイル形式です。オーディオファイル（mp3、wav、oggなど）またはMIDIファイルを使用してください。",
+  "import_error_invalid_audio_file": "サポートされていないファイル形式です。オーディオファイル（mp3、wav、oggなど）またはMIDIファイルを使用してください：",
   "export_midi": "MIDIをエクスポート",
   "clear_all": "全消去",
   "confirm_clear_all": "今までの作業をすべて消去しますか？",

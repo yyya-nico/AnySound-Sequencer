@@ -33,7 +33,7 @@
   "beat_volume": "Beat Volume",
   "import_midi": "Import MIDI",
   "import_error_invalid_midi_file": "Error importing MIDI file. Please check the file format.",
-  "import_error_invalid_audio_file": "Unsupported file format. Please use audio files (mp3, wav, ogg, etc.) or MIDI files.",
+  "import_error_invalid_audio_file": "Unsupported file format. Please use audio files (mp3, wav, ogg, etc.) or MIDI files:",
   "export_midi": "Export MIDI",
   "clear_all": "Clear All",
   "confirm_clear_all": "Are you sure you want to clear all the work?",

@@ -651,32 +651,35 @@ class Sequencer {
         e.preventDefault();
         dropZone.classList.remove('drag-over');
         
-        const files = Array.from(e.dataTransfer!.files);
+        const files = e.dataTransfer!.files;
         if (files.length === 0) return;
 
-        const file = files[0];
-        this.handleFileDrop(file, dropZone);
+        this.handleFilesDrop(files, dropZone);
       });
     });
   }
 
-  private handleFileDrop(file: File, dropZone: HTMLElement) {
-    const fileExtension = file.name.toLowerCase().split('.').pop();
-    const isMidiFile = file.type === 'audio/midi' || file.type === 'audio/x-midi' || fileExtension === 'mid' || fileExtension === 'midi';
-    const isAudioFile = file.type.startsWith('audio/') || 
-      ['mp3', 'wav', 'ogg', 'aac', 'm4a', 'flac'].includes(fileExtension || '');
+  private handleFilesDrop(files: FileList, dropZone: HTMLElement) {
+    const trackType = this.getTrackTypeFromDropZone(dropZone);
+    let isSet = false;
+    [...files].forEach(file => {
+      const fileExtension = file.name.toLowerCase().split('.').pop();
+      const isMidiFile = file.type === 'audio/midi' || file.type === 'audio/x-midi' || fileExtension === 'mid' || fileExtension === 'midi';
+      const isAudioFile = file.type.startsWith('audio/') || 
+        ['mp3', 'wav', 'ogg', 'aac', 'm4a', 'flac'].includes(fileExtension || '');
 
-    if (isMidiFile) {
-      this.importMidiFromFile(file);
-    } else if (isAudioFile) {
-      this.addAudioFile(file);
-      const trackType = this.getTrackTypeFromDropZone(dropZone);
-      if (trackType) {
+      if (isMidiFile) {
+        this.importMidiFromFile(file);
+      } else if (isAudioFile) {
+        this.addAudioFile(file);
+        if (isSet) return; // 最初の1つをセット
+        isSet = true;
+        if (!trackType) return;
         this.setAudio(trackType, file);
+      } else {
+        alert(`${i18next.t('import_error_invalid_audio_file')} ${file.name}`);
       }
-    } else {
-      alert(i18next.t('import_error_invalid_audio_file'));
-    }
+    });
   }
 
   private getTrackTypeFromDropZone(dropZone: HTMLElement): string | null {
