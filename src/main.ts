@@ -569,18 +569,18 @@ class Sequencer {
             });
             const file = files[0];
             await this.setAudio(track, file);
-            soundPreview(file.name);
+            if (this.paused) soundPreview(file.name);
           });
         } else if (value === 'sine') {
           // 正弦波を選択
           await this.setSine(track);
-          soundPreview('sine');
+          if (this.paused) soundPreview('sine');
         } else {
           // 既存の音源ファイルを選択
           const filename = value;
           const file = this.files.find(f => f.file.name === filename)?.file || null;
           await this.setAudio(track, file);
-          soundPreview(filename);
+          if (this.paused) soundPreview(filename);
         }
       });
     });
