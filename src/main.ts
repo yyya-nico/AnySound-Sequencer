@@ -31,16 +31,20 @@ i18next
 
 function updateTranslations() {
   (document.querySelectorAll('[data-i18n]') as NodeListOf<HTMLElement>).forEach(element => {
-    const key = element.dataset.i18n;
-    if (key) {
-      if (element.title) {
-        element.title = i18next.t(key);
-      } else if ((element as HTMLInputElement).placeholder) {
-        (element as HTMLInputElement).placeholder = i18next.t(key);
-      } else {
-        element.innerText = i18next.t(key);
+    const keys = element.dataset.i18n?.split(' ') || [];
+    keys.forEach((key, index) => {
+      if (key) {
+        if (element.title) {
+          element.title = i18next.t(key);
+        } else if ((element as HTMLInputElement).placeholder && index === 0) {
+          (element as HTMLInputElement).placeholder = i18next.t(key);
+        } else if ((element as HTMLInputElement).value && index === 1) {
+          (element as HTMLInputElement).value = i18next.t(key);
+        } else {
+          element.innerText = i18next.t(key);
+        }
       }
-    }
+    });
   });
 
   // Update drop messages
