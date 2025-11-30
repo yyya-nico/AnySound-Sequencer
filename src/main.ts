@@ -504,17 +504,18 @@ class Sequencer {
     soundButtonsContainers.forEach(container => {
       const track = (container as HTMLElement).dataset.track!;
       const soundSelect = container.querySelector('.sound-select') as HTMLSelectElement;
-      const selectAudioFile = () => {
+      const selectAudioFiles = () => {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'audio/*';
-        const promise = new Promise<File | null>((resolve) => {
+        input.multiple = true;
+        const promise = new Promise<FileList | null>((resolve) => {
           input.onchange = (event) => {
-            const file = (event.target as HTMLInputElement).files?.[0] || null;
-            if (!file) {
+            const files = (event.target as HTMLInputElement).files || null;
+            if (!files || files.length === 0) {
               resolve(null);
             }
-            resolve(file);
+            resolve(files);
           };
           input.oncancel = () => {
             resolve(null);
@@ -527,8 +528,8 @@ class Sequencer {
         const value = (e.target as HTMLSelectElement).value;
         if (value === 'add-sound') {
           // 新しい音源ファイルを追加
-          selectAudioFile().then(file => {
-            if (!file) {
+          selectAudioFiles().then(files => {
+            if (!files || files.length === 0) {
               // キャンセルされた場合は選択を戻す
               if (track === 'melody') {
                 soundSelect.value = this.filenames.melody.get(this.currentTrack) || 'sine';
@@ -539,8 +540,10 @@ class Sequencer {
               }
               return;
             }
-            this.addAudioFile(file);
-            this.setAudio(track, file);
+            [...files].forEach(file => {
+              this.addAudioFile(file);
+            });
+            this.setAudio(track, files[0]);
           });
         } else if (value === 'sine') {
           // 正弦波を選択
