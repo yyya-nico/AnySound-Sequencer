@@ -35,6 +35,8 @@ function updateTranslations() {
     if (key) {
       if (element.title) {
         element.title = i18next.t(key);
+      } else if ((element as HTMLInputElement).placeholder) {
+        (element as HTMLInputElement).placeholder = i18next.t(key);
       } else {
         element.innerText = i18next.t(key);
       }
@@ -341,6 +343,7 @@ class Sequencer {
     startPitch: null,
     endPitch: null
   }
+  private title: string = '';
   private notes: Note[] = [];
   private beats: Beat[] = [];
   private files: AudioFile[] = [];
@@ -387,6 +390,10 @@ class Sequencer {
   }
 
   private setupEventListeners() {
+    document.getElementById('title-input')?.addEventListener('input', (e) => {
+      this.title = (e.target as HTMLInputElement).value.trim();
+    });
+
     // Playback controls
     document.getElementById('prev-btn')?.addEventListener('click', () => {
       this.resetPlayback();
@@ -1247,6 +1254,7 @@ class Sequencer {
     });
 
     // Load saved data
+    const savedTitle = await localForage.getItem<string>('title');
     const savedNotes = await localForage.getItem<Note[]>('notes');
     const savedBeats = await localForage.getItem<Beat[]>('beats');
     const savedBpm = await localForage.getItem<number>('bpm');
@@ -1259,6 +1267,12 @@ class Sequencer {
     if (savedGridSize) {
       this.gridSize = savedGridSize;
       (document.querySelector('.sequencer-container') as HTMLElement).style.setProperty('--grid-size', this.gridSize.toString());
+    }
+
+    if (savedTitle) {
+      this.title = savedTitle;
+      const titleInput = document.getElementById('title-input') as HTMLInputElement;
+      if (titleInput) titleInput.value = this.title;
     }
 
     if (savedNotes) {
@@ -1418,6 +1432,7 @@ class Sequencer {
   }
 
   private saveData() {
+    localForage.setItem('title', this.title);
     localForage.setItem('notes', this.notes);
     localForage.setItem('beats', this.beats);
     localForage.setItem('bpm', this.bpm);
@@ -2056,7 +2071,12 @@ class Sequencer {
       // Save data
       this.saveData();
       
-      console.log(`Imported MIDI file: ${file.name}`);
+      this.title = filenameToName(file.name);
+      const titleInput = document.getElementById('title-input') as HTMLInputElement;
+      if (titleInput) {
+        titleInput.value = this.title;
+      }
+      console.log('MIDI file imported successfully');
     } catch (error) {
       console.error('Error importing MIDI file:', error);
       alert(i18next.t('import_error_invalid_midi_file'));
@@ -2096,10 +2116,11 @@ class Sequencer {
       // Create download
       const blob = new Blob([new Uint8Array(midiData)], { type: 'audio/midi' });
       const url = URL.createObjectURL(blob);
-      
+
+      const filename = this.title || i18next.t('untitled');
       const link = document.createElement('a');
       link.href = url;
-      link.download = `sequencer-export-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.mid`;
+      link.download = `${filename}.mid`;
       link.click();
       URL.revokeObjectURL(url);
       console.log('MIDI file exported successfully');

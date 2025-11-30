@@ -1,5 +1,7 @@
 {
   "title": "AnySound シーケンサー",
+  "input_title": "タイトルを入力...",
+  "untitled": "無題",
   "previous": "前へ",
   "play": "再生",
   "pause": "一時停止",

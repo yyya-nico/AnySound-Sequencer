@@ -1,5 +1,7 @@
 {
   "title": "AnySound Sequencer",
+  "input_title": "Input title...",
+  "untitled": "untitled",
   "previous": "Previous",
   "play": "Play",
   "pause": "Pause",
