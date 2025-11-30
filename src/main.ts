@@ -1578,6 +1578,7 @@ class Sequencer {
 
   private clearAll() {
     this.stop();
+    this.title = i18next.t('untitled');
     this.notes = [];
     this.beats = [];
     this.bpm = 120;
@@ -1585,6 +1586,8 @@ class Sequencer {
     this.gridSize = 64;
 
     // Clear UI
+    const titleInput = document.getElementById('title-input') as HTMLInputElement;
+    if (titleInput) titleInput.value = this.title;
     const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
     if (sequencerContainer) sequencerContainer.style.setProperty('--grid-size', this.gridSize.toString());
     const pianoRollSection = document.querySelector('.piano-roll-section') as HTMLElement;
