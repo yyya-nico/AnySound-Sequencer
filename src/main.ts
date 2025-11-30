@@ -594,6 +594,8 @@ class Sequencer {
       }
       this.audioManager.setMelodyPitchShift(filename, pitchShift);
 
+      if (!this.paused) return;
+
       const noteId = `preview-pitch-shift-${Date.now()}`
       const note: Note = {
         id: noteId,
