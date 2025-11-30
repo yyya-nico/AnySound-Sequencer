@@ -778,10 +778,12 @@ class Sequencer {
 
   private async setAudio(track: string, file: File | null = null) {
     const filename = file?.name || 'sine';
+    const audioFile = this.files.find(f => f.file.name === filename) || null;
     const isSine = filename === 'sine';
     const soundButtonsContainer = document.querySelector(`.sound[data-track="${track}"]`) as HTMLElement;
-    const pitchShiftLabel = document.querySelector('.pitch-shift-label') as HTMLElement;
     const soundSelect = soundButtonsContainer.querySelector('.sound-select') as HTMLSelectElement;
+    const pitchShiftLabel = document.querySelector('.pitch-shift-label') as HTMLElement;
+    const pitchShiftInput = document.getElementById('melody-pitch-shift') as HTMLInputElement;
     
     // Select要素の選択を更新
     soundSelect.value = filename;
@@ -789,6 +791,11 @@ class Sequencer {
     if (track === 'melody') {
       this.filenames.melody.set(this.currentTrack, filename);
       pitchShiftLabel.hidden = isSine;
+      if (audioFile && audioFile.pitchShift !== 0) {
+        pitchShiftInput.valueAsNumber = audioFile.pitchShift;
+      } else {
+        pitchShiftInput.value = '';
+      }
       await this.audioManager.setMelodyAudio(file);
     } else if (track === 'beat1') {
       this.filenames.beat1 = filename;
