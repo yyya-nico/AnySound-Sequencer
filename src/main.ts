@@ -389,10 +389,6 @@ class Sequencer {
     this.setupLocalForage();
   }
 
-  private getFilenameByTrack(track: number): string {
-    return this.filenames.melody.get(track) || 'sine';
-  }
-
   private setupEventListeners() {
     document.getElementById('title-input')?.addEventListener('input', (e) => {
       this.title = (e.target as HTMLInputElement).value.trim();
@@ -565,7 +561,8 @@ class Sequencer {
               return;
             }
             [...files].forEach(file => {
-              this.addAudioFile(file);
+              const pitchShift = this.extractPitchShiftFromFilename(file.name);
+              this.addAudioFile(file, pitchShift);
             });
             const file = files[0];
             await this.setAudio(track, file);
@@ -697,7 +694,10 @@ class Sequencer {
       this.importMidiFromFile(midiFiles[0]);
     }
     if (audioFiles.length > 0) {
-      audioFiles.forEach(file => this.addAudioFile(file));
+      audioFiles.forEach(file => {
+        const pitchShift = this.extractPitchShiftFromFilename(file.name);
+        this.addAudioFile(file, pitchShift);
+      });
       if (trackType) {
         this.setAudio(trackType, audioFiles[0]);
       }
@@ -726,12 +726,12 @@ class Sequencer {
     return null;
   }
 
-  private addAudioFile(file: File) {
+  private addAudioFile(file: File, pitchShift: number = 0) {
     // すでに同じ名前のファイルがある場合は追加しない
     if (this.files.find(f => f.file.name === file.name)) {
       return;
     }
-    this.files.push({ file, pitchShift: 0 });
+    this.files.push({ file, pitchShift });
 
     // すべてのサウンドセレクトにオプションを追加
     const soundSelects = document.querySelectorAll('.sound-select') as NodeListOf<HTMLSelectElement>;
@@ -780,6 +780,7 @@ class Sequencer {
   private async setAudio(track: string, file: File | null = null) {
     const filename = file?.name || 'sine';
     const audioFile = this.files.find(f => f.file.name === filename) || null;
+    const pitchShift = audioFile ? audioFile.pitchShift : 0;
     const isSine = filename === 'sine';
     const soundButtonsContainer = document.querySelector(`.sound[data-track="${track}"]`) as HTMLElement;
     const soundSelect = soundButtonsContainer.querySelector('.sound-select') as HTMLSelectElement;
@@ -792,12 +793,13 @@ class Sequencer {
     if (track === 'melody') {
       this.filenames.melody.set(this.currentTrack, filename);
       pitchShiftLabel.hidden = isSine;
-      if (audioFile && audioFile.pitchShift !== 0) {
-        pitchShiftInput.valueAsNumber = audioFile.pitchShift;
+      await this.audioManager.setMelodyAudio(file);
+      if (pitchShift) {
+        pitchShiftInput.valueAsNumber = pitchShift;
+        this.audioManager.setMelodyPitchShift(filename, pitchShift);
       } else {
         pitchShiftInput.value = '';
       }
-      await this.audioManager.setMelodyAudio(file);
     } else if (track === 'beat1') {
       this.filenames.beat1 = filename;
       await this.audioManager.setBeatSample(0, file);
@@ -809,6 +811,16 @@ class Sequencer {
 
   private setSine(track: string) {
     return this.setAudio(track);
+  }
+
+  private getFilenameByTrack(track: number): string {
+    return this.filenames.melody.get(track) || 'sine';
+  }
+
+  private extractPitchShiftFromFilename(filename: string): number {
+    const name = filenameToName(filename);
+    const match = name.match(/ps([-+]?\d+(\.\d+)?)$/);
+    return match ? parseFloat(match[1]) : 0;
   }
 
   private initializePianoRoll() {
