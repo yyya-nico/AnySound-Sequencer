@@ -691,25 +691,20 @@ class Sequencer {
 
   private handleFilesDrop(files: FileList, dropZone: HTMLElement) {
     const trackType = this.getTrackTypeFromDropZone(dropZone);
-    let isSet = false;
-    [...files].forEach(file => {
-      const fileExtension = file.name.toLowerCase().split('.').pop();
-      const isMidiFile = file.type === 'audio/midi' || file.type === 'audio/x-midi' || fileExtension === 'mid' || fileExtension === 'midi';
-      const isAudioFile = file.type.startsWith('audio/') || 
-        ['mp3', 'wav', 'ogg', 'aac', 'm4a', 'flac'].includes(fileExtension || '');
-
-      if (isMidiFile) {
-        this.importMidiFromFile(file);
-      } else if (isAudioFile) {
-        this.addAudioFile(file);
-        if (isSet) return; // 最初の1つをセット
-        isSet = true;
-        if (!trackType) return;
-        this.setAudio(trackType, file);
-      } else {
-        alert(`${i18next.t('import_error_invalid_audio_file')} ${file.name}`);
+    const midiFiles = [...files].filter(file => file.type === 'audio/midi' || file.type === 'audio/x-midi' || file.name.toLowerCase().endsWith('.mid') || file.name.toLowerCase().endsWith('.midi'));
+    const audioFiles = [...files].filter(file => file.type.startsWith('audio/') || ['mp3', 'wav', 'ogg', 'aac', 'm4a', 'flac'].some(ext => file.name.toLowerCase().endsWith(`.${ext}`)));
+    if (midiFiles.length > 0) {
+      this.importMidiFromFile(midiFiles[0]);
+    }
+    if (audioFiles.length > 0) {
+      audioFiles.forEach(file => this.addAudioFile(file));
+      if (trackType) {
+        this.setAudio(trackType, audioFiles[0]);
       }
-    });
+    }
+    if (midiFiles.length === 0 && audioFiles.length === 0) {
+      alert(i18next.t('import_error_invalid_audio_file'));
+    }
   }
 
   private getTrackTypeFromDropZone(dropZone: HTMLElement): string | null {
