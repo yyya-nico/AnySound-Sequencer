@@ -852,6 +852,26 @@ class Sequencer {
       section.classList.remove('notify');
     });
 
+    // Add keyboard listener for selection and deletion
+    section.addEventListener('keydown', (e) => {
+      // Ctrl+A (Cmd+A on Mac) to select all notes in current track
+      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+        e.preventDefault();
+        const trackNotes = this.getCurrentTrackNotes();
+        this.selectedNotes.clear();
+        trackNotes.forEach(note => this.selectedNotes.add(note.id));
+        this.updateSelectedNotesVisual();
+      }
+      // Delete or Backspace to remove selected notes
+      if ((e.key === 'Delete' || e.key === 'Backspace') && this.selectedNotes.size > 0) {
+        e.preventDefault();
+        const notesToDelete = Array.from(this.selectedNotes);
+        notesToDelete.forEach(noteId => this.removeNote(noteId));
+        this.selectedNotes.clear();
+        this.updateSelectedNotesVisual();
+      }
+    });
+
     // Add pointer listener for note creation
     const firstCurrent = { notePos: -1, pitch: -1 };
     const firstPointer = { notePos: -1, pitch: -1 };
