@@ -1700,8 +1700,8 @@ class Sequencer {
     this.selectionStartX = e.clientX - rect.left;
     this.selectionStartY = e.clientY - rect.top;
     
-    // 既存の選択をクリア（Ctrlキーが押されていない場合）
-    if (!e.ctrlKey) {
+    // 既存の選択をクリア（Shiftキーが押されていない場合）
+    if (!e.shiftKey) {
       this.selectedNotes.clear();
       this.updateSelectedNotesVisual();
     }
