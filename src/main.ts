@@ -940,8 +940,8 @@ class Sequencer {
     pianoRoll.addEventListener('pointerdown', (e) => {
       if (!e.isPrimary || e.button !== 0) return; // 左クリックのみ
       
-      // Altキーが押されている場合は矩形選択開始
-      if (e.altKey) {
+      // Ctrlキーが押されている場合は矩形選択開始
+      if (e.ctrlKey || e.metaKey) {
         this.startRectangleSelection(e, pianoRoll);
         return;
       }
