@@ -369,49 +369,28 @@ header {
   --height-per-note: 20px;
   --grid-size: 64; // 64 beats
   --grid-keys: 88; // 88 keys
-  grid-area: 1 / 1 / 2 / 3;
   display: flex;
-  flex-direction: column;
   min-height: 0;
+  grid-area: 1 / 1 / 2 / 3;
   background: #1a1a1a;
 }
 
-.piano-roll-section {
+.sounds {
   display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: var(--sound-panel-width);
+  border-inline-end: 1px solid #333;
+  background: #222;
   overflow: auto;
-  height: 100%;
-  margin-block-end: calc(var(--scrollbar-width, 0px) * -1);
-  background: #1e1e1e;
-
-  &.notify {
-    &::after {
-      animation: notify 1s 1s ease-out backwards;
-    }
-  }
 
   &::after {
-    display: grid;
-    place-items: center;
-    flex-shrink: 0;
-    position: sticky;
-    top: 50%;
-    right: 50%;
-    z-index: 2;
-    opacity: 0;
-    translate: 50% -50%;
-    width: 200px;
-    height: 200px;
-    background-color: #0000007f;
-    font-size: 78px;
-    font-weight: 300;
-    content: attr(data-track);
-    pointer-events: none;
-  }
-}
-
-@keyframes notify {
-  0% {
-    opacity: 1;
+    content: "";
+    position: absolute;
+    top: 0;
+    right: calc(var(--scrollbar-width, 0px) * -1);
+    width: var(--scrollbar-width, 0px);
+    height: 100%;
   }
 }
 
@@ -421,10 +400,19 @@ header {
   flex-shrink: 0;
   justify-content: center;
   gap: 10px;
-  position: sticky;
-  top: 0;
-  width: var(--sound-panel-width);
   padding: 10px;
+
+  &:first-child {
+    flex-grow: 1;
+  }
+
+  &:nth-child(2) {
+    border-block-start: 1px solid #333;
+  }
+
+  + .sound {
+    flex-basis: 110px;
+  }
 
   .sound-select {
     text-align: center;
@@ -463,29 +451,12 @@ header {
   }
 }
 
-.piano-roll-grid {
-  flex-shrink: 0;
+.rolls {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto 220px;
   position: relative;
-  width: calc(var(--width-per-note) * var(--grid-size));
-  height: calc(var(--height-per-note) * var(--grid-keys));
-  margin-inline-end: -100px;
-
-  &.note-dragging {
-    cursor: move;
-
-    .note {
-      cursor: inherit;
-      opacity: 0.6;
-    }
-  }
-
-  &.note-resize {
-    cursor: ew-resize;
-
-    .note {
-      cursor: inherit;
-    }
-  }
+  overflow: auto;
 
   &.playback-drag {
     cursor: col-resize;
@@ -493,13 +464,18 @@ header {
 }
 
 .playback-position {
-  flex-shrink: 0;
+  grid-row: 1 / -1;
   position: sticky;
   top: 0;
   z-index: 2;
   width: 2px;
-  height: 100%;
-  margin-inline-end: -2px;
+  height: calc(
+    100vh - var(--header-height) - var(--control-panel-height, 73px)
+  );
+  height: calc(
+    100dvh - var(--header-height) - var(--control-panel-height, 73px)
+  );
+  margin-inline: -1px;
   background: #a11f1f;
   transform: translateX(var(--position, 0px));
   transition: background-color 0.1s ease;
@@ -518,10 +494,72 @@ header {
   }
 
   &.hover {
+    width: 4px;
+    margin-inline: -2px;
     background: #afafaf;
 
     &::after {
       background: #afafaf;
+    }
+  }
+}
+
+.piano-roll-section {
+  display: flex;
+
+  &.notify {
+    &::after {
+      animation: notify 1s 1s ease-out backwards;
+    }
+  }
+
+  &::after {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    position: fixed;
+    top: calc((100% - 220px) / 2);
+    left: calc((100% + var(--sound-panel-width)) / 2);
+    z-index: 2;
+    opacity: 0;
+    translate: -50% -50%;
+    width: 200px;
+    height: 200px;
+    background-color: #0000007f;
+    font-size: 78px;
+    font-weight: 300;
+    content: attr(data-track);
+    pointer-events: none;
+  }
+}
+
+@keyframes notify {
+  0% {
+    opacity: 1;
+  }
+}
+
+.piano-roll-grid {
+  flex-shrink: 0;
+  position: relative;
+  width: calc(var(--width-per-note) * var(--grid-size));
+  height: calc(var(--height-per-note) * var(--grid-keys));
+  background: #1e1e1e;
+
+  &.note-dragging {
+    cursor: move;
+
+    .note {
+      cursor: inherit;
+      opacity: 0.6;
+    }
+  }
+
+  &.note-resize {
+    cursor: ew-resize;
+
+    .note {
+      cursor: inherit;
     }
   }
 }
@@ -531,13 +569,12 @@ header {
   flex-direction: column;
   flex-shrink: 0;
   align-self: flex-start;
-  position: sticky;
-  top: 50%;
+  position: fixed;
+  top: calc((100% - 220px) / 2);
   right: 0;
   z-index: 2;
   translate: 0 -50%;
   width: 100px;
-  margin-inline-end: calc(-200px * 1.5);
   text-align: center;
 
   &:hover {
@@ -573,12 +610,10 @@ header {
 }
 
 .rhythm-section {
-  flex-basis: 220px;
-  flex-shrink: 0;
-  overflow: auto;
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
   border-block-start: 1px solid #333;
-  background: #1e1e1e;
-  // scrollbar-gutter: stable;
 }
 
 .rhythm-tracks {
@@ -618,6 +653,7 @@ header {
   height: 100%;
   background-image: linear-gradient(to right, #333 2px, transparent 1px);
   background-size: calc(var(--width-per-note) * 4) 100%; // Highlight every 4 beats
+  background-color: #1e1e1e;
 }
 
 .control-panel {

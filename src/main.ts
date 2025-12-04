@@ -606,6 +606,79 @@ class Sequencer {
       this.audioManager.playNotePreview(note, filename, this.bpm * this.playbackSpeed, noteId);
     });
 
+    const rolls = document.querySelector('.rolls') as HTMLElement;
+    document.getElementById('app')!.style.setProperty('--scrollbar-width', `${rolls.offsetHeight - rolls.clientHeight}px`);
+    rolls.scrollTop = Sequencer.noteHeight * (12 * 2 + 2); // 2 octaves + extra space
+    let beforeScrollLeft = 0, beforeScrollTop = rolls.scrollTop;
+    rolls.addEventListener('scroll', (e) => {
+      if (this.pointerDowned) {
+        this.autoScroll = false;
+      }
+      const target = e.target as HTMLElement;
+      const scrollLeft = target.scrollLeft;
+      const scrollTop = target.scrollTop;
+      if (Math.abs(scrollLeft - beforeScrollLeft) > Sequencer.noteWidth || Math.abs(scrollTop - beforeScrollTop) > Sequencer.noteHeight) {
+        beforeScrollLeft = scrollLeft;
+        beforeScrollTop = scrollTop;
+        this.renderTracks();
+      }
+    });
+
+    const playbackPosition = document.querySelector('.playback-position') as HTMLElement;
+    let playbackDragging = false;
+    let beforePos = 0;
+    let initialRelativeX = 0;
+    let beforePaused = true;
+
+    playbackPosition.addEventListener('pointerenter', () => {
+      playbackPosition.classList.add('hover');
+    });
+
+    playbackPosition.addEventListener('pointerleave', () => {
+      if (playbackDragging) return;
+      playbackPosition.classList.remove('hover');
+    });
+    
+    const pianoRollSection = document.querySelector('.piano-roll-section') as HTMLElement;
+
+    playbackPosition.addEventListener('pointerdown', (e) => {
+      if (!e.isPrimary || e.button !== 0) return; // 左クリックのみ
+      beforePaused = this.paused;
+      if (!this.paused) this.pause();
+      playbackDragging = true;
+      
+      const pianoRollRect = pianoRollSection.getBoundingClientRect();
+      initialRelativeX = e.clientX - pianoRollRect.left; // pianoRoll内での相対X座標
+      beforePos = parseFloat(playbackPosition.style.getPropertyValue('--position')) || 0;
+      rolls.classList.add('playback-drag');
+    });
+
+    [playbackPosition, rolls].forEach(element => {
+      element.addEventListener('pointermove', (e) => {
+        if (!playbackDragging) return;
+        
+        const pianoRollRect = pianoRollSection.getBoundingClientRect();
+        const currentRelativeX = e.clientX - pianoRollRect.left;
+        const deltaX = currentRelativeX - initialRelativeX;
+        
+        const newPosition = minmax(beforePos + deltaX, 0, this.gridSize * Sequencer.noteWidth);
+        playbackPosition.style.setProperty('--position', `${newPosition}px`);
+        const newBeat = newPosition / Sequencer.noteWidth;
+        this.currentBeat = newBeat;
+        
+        this.playNotes(this.currentBeat);
+
+        this.scrollByDragging(e, true);
+      });
+    });
+    document.addEventListener('pointerup', (e) => {
+      if (!playbackDragging || !e.isPrimary || e.button !== 0) return;
+      if (!beforePaused) this.play();
+      playbackDragging = false;
+      playbackPosition.classList.remove('hover');
+      rolls.classList.remove('playback-drag');
+    });
+
     document.getElementById('clear-sounds-btn')?.addEventListener('click', () => {
       if (confirm(i18next.t('confirm_clear_sounds'))) {
         this.clearSounds();
@@ -825,35 +898,17 @@ class Sequencer {
   }
 
   private initializePianoRoll() {
-    const section = document.querySelector('.piano-roll-section') as HTMLElement;
+    const pianoRollSection = document.querySelector('.piano-roll-section') as HTMLElement;
     const pianoRoll = document.querySelector('.piano-roll-grid') as HTMLElement;
 
     if (!pianoRoll) return;
 
-    document.getElementById('app')!.style.setProperty('--scrollbar-width', `${section.offsetHeight - section.clientHeight}px`);
-    section.scrollTop = Sequencer.noteHeight * (12 * 2 + 2); // 2 octaves + extra space
-    let beforeScrollLeft = 0, beforeScrollTop = section.scrollTop;
-    section.addEventListener('scroll', (e) => {
-      if (this.pointerDowned) {
-        this.autoScroll = false;
-      }
-      const target = e.target as HTMLElement;
-      const scrollLeft = target.scrollLeft;
-      const scrollTop = target.scrollTop;
-      document.querySelector('.rhythm-section')!.scrollTo({ left: scrollLeft });
-      if (Math.abs(scrollLeft - beforeScrollLeft) > Sequencer.noteWidth || Math.abs(scrollTop - beforeScrollTop) > Sequencer.noteHeight) {
-        beforeScrollLeft = scrollLeft;
-        beforeScrollTop = scrollTop;
-        this.renderTracks();
-      }
-    });
-
-    section.addEventListener('animationend', () => {
-      section.classList.remove('notify');
+    pianoRollSection.addEventListener('animationend', () => {
+      pianoRollSection.classList.remove('notify');
     });
 
     // Add keyboard listener for selection and deletion
-    section.addEventListener('keydown', (e) => {
+    pianoRollSection.addEventListener('keydown', (e) => {
       // Ctrl+A (Cmd+A on Mac) to select all notes in current track
       if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
         e.preventDefault();
@@ -1041,71 +1096,10 @@ class Sequencer {
     pianoRoll.addEventListener('pointerpress', (e) => {
       removeNoteByEvent(e as CustomEvent);
     });
-
-    const playbackPosition = document.querySelector('.playback-position') as HTMLElement;
-    let playbackDragging = false;
-    let beforePos = 0;
-    let initialRelativeX = 0;
-    let beforePaused = true;
-
-    playbackPosition.addEventListener('pointerenter', () => {
-      playbackPosition.classList.add('hover');
-    });
-
-    playbackPosition.addEventListener('pointerleave', () => {
-      if (playbackDragging) return;
-      playbackPosition.classList.remove('hover');
-    });
-
-    playbackPosition.addEventListener('pointerdown', (e) => {
-      if (!e.isPrimary || e.button !== 0) return; // 左クリックのみ
-      beforePaused = this.paused;
-      if (!this.paused) this.pause();
-      playbackDragging = true;
-      
-      const pianoRollRect = pianoRoll.getBoundingClientRect();
-      initialRelativeX = e.clientX - pianoRollRect.left; // pianoRoll内での相対X座標
-      beforePos = parseFloat(playbackPosition.style.getPropertyValue('--position')) || 0;
-      pianoRoll.classList.add('playback-drag');
-    });
-    
-    [playbackPosition, pianoRoll].forEach(element => {
-      element.addEventListener('pointermove', (e) => {
-        if (!playbackDragging) return;
-        
-        const pianoRollRect = pianoRoll.getBoundingClientRect();
-        const currentRelativeX = e.clientX - pianoRollRect.left;
-        const deltaX = currentRelativeX - initialRelativeX;
-        
-        const newPosition = minmax(beforePos + deltaX, 0, this.gridSize * Sequencer.noteWidth);
-        playbackPosition.style.setProperty('--position', `${newPosition}px`);
-        const newBeat = newPosition / Sequencer.noteWidth;
-        this.currentBeat = newBeat;
-        
-        this.playNotes(this.currentBeat);
-
-        this.scrollByDragging(e, true);
-      });
-    });
-    document.addEventListener('pointerup', (e) => {
-      if (!playbackDragging || !e.isPrimary || e.button !== 0) return;
-      if (!beforePaused) this.play();
-      playbackDragging = false;
-      playbackPosition.classList.remove('hover');
-      pianoRoll.classList.remove('playback-drag');
-    });
   }
 
   private initializeRhythmSection() {
     const section = document.querySelector('.rhythm-section') as HTMLElement;
-    section.addEventListener('scroll', (e) => {
-      if (this.pointerDowned) {
-        this.autoScroll = false;
-      }
-      const target = e.target as HTMLElement;
-      const scrollLeft = target.scrollLeft;
-      document.querySelector('.piano-roll-section')!.scrollTo({ left: scrollLeft });
-    });
     this.createBeats();
 
     let isPointerDown = false;
@@ -1438,24 +1432,25 @@ class Sequencer {
   }
 
   private scrollByDragging(e: PointerEvent, horizontalOnly: boolean = false) {
-    const section = document.querySelector('.piano-roll-section') as HTMLElement;
-    if (!section) return;
+    const rolls = document.querySelector('.rolls') as HTMLElement;
+    if (!rolls) return;
 
-    const sectionRect = section.getBoundingClientRect();
-    const x = e.clientX - sectionRect.left, y = e.clientY - sectionRect.top;
+    const rollsRect = rolls.getBoundingClientRect();
+    const x = e.clientX - rollsRect.left, y = e.clientY - rollsRect.top;
     const edgeThreshold = 50;
+    const rythmSectionHeight = 220;
 
-    if (!horizontalOnly && y > sectionRect.height - edgeThreshold) {
-      section.scrollBy({ top: 20 });
+    if (!horizontalOnly && y > rollsRect.height - edgeThreshold - rythmSectionHeight) {
+      rolls.scrollBy({ top: 20 });
     }
-    if (x > sectionRect.width - edgeThreshold) {
-      section.scrollBy({ left: 20 });
+    if (x > rollsRect.width - edgeThreshold) {
+      rolls.scrollBy({ left: 20 });
     }
     if (!horizontalOnly && y < edgeThreshold) {
-      section.scrollBy({ top: -20 });
+      rolls.scrollBy({ top: -20 });
     }
     if (x < edgeThreshold) {
-      section.scrollBy({ left: -20 });
+      rolls.scrollBy({ left: -20 });
     }
   }
 
@@ -1920,9 +1915,9 @@ class Sequencer {
     this.lastBpmChangeBeat = 0;
     this.currentBeat = 0;
     this.playedNotes.clear();
-    const pianoRollSection = document.querySelector('.piano-roll-section') as HTMLElement;
+    const rolls = document.querySelector('.rolls') as HTMLElement;
     const playbackPosition = document.querySelector('.playback-position') as HTMLElement;
-    pianoRollSection.scrollTo({ left: 0 });
+    rolls.scrollTo({ left: 0 });
     playbackPosition.style.removeProperty('--position');
     if ('mediaSession' in navigator) {
       navigator.mediaSession.setPositionState({

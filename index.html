@@ -21,8 +21,8 @@
     <main id="app">
       <!-- 上側のメインシーケンサーエリア -->
       <div class="sequencer-container">
-        <!-- ピアノロールエリア -->
-        <div class="piano-roll-section drop-zone" data-track="1" data-drop-message="" data-i18n-drop tabindex="0">
+        <!-- 音源セクション -->
+        <div class="sounds">
           <div class="sound" data-track="melody">
             <select class="sound-select">
               <option value="sine" data-i18n="sine_wave">Sine Wave</option>
@@ -34,41 +34,48 @@
               <input type="number" id="melody-pitch-shift" step="0.5">
             </label>
           </div>
-          <div class="playback-position"></div>
-          <div class="piano-roll-grid grid">
-            <!-- グリッドとノート配置エリア -->
+          <div class="sound" data-track="beat1">
+            <select class="sound-select">
+              <option value="sine" data-i18n="sine_wave">Sine Wave</option>
+              <hr>
+              <option value="add-sound" data-i18n="add_sound">Add Sound Source File...</option>
+            </select>
           </div>
-          <div id="track-selector">
-            <span class="material-icons">keyboard_arrow_up</span>
-            <span class="material-icons">keyboard_arrow_up</span>
-            <label data-i18n="wheel_or_swipe_to_select_track">Wheel or Swipe to Select Track</label>
-            <span class="material-icons">keyboard_arrow_down</span>
-            <span class="material-icons">keyboard_arrow_down</span>
+          <div class="sound" data-track="beat2">
+            <select class="sound-select">
+              <option value="sine" data-i18n="sine_wave">Sine Wave</option>
+              <hr>
+              <option value="add-sound" data-i18n="add_sound">Add Sound Source File...</option>
+            </select>
           </div>
         </div>
-        
-        <!-- リズムセクション -->
-        <div class="rhythm-section">
-          <div class="rhythm-tracks">
-            <div class="rhythm-track drop-zone" data-track="0" data-drop-message="" data-i18n-drop>
-              <div class="sound" data-track="beat1">
-                <select class="sound-select">
-                  <option value="sine" data-i18n="sine_wave">Sine Wave</option>
-                  <hr>
-                  <option value="add-sound" data-i18n="add_sound">Add Sound Source File...</option>
-                </select>
-              </div>
-              <div class="rhythm-grid"></div>
+        <!-- ピアノロール＆リズムセクション -->
+        <div class="rolls">
+          <!-- 再生位置インジケーター -->
+          <div class="playback-position"></div>
+          <!-- ピアノロールエリア -->
+          <div class="piano-roll-section drop-zone" data-track="1" data-drop-message="" data-i18n-drop tabindex="0">
+            <div class="piano-roll-grid grid">
+              <!-- グリッドとノート配置エリア -->
             </div>
-            <div class="rhythm-track drop-zone" data-track="1" data-drop-message="" data-i18n-drop>
-              <div class="sound" data-track="beat2">
-                <select class="sound-select">
-                  <option value="sine" data-i18n="sine_wave">Sine Wave</option>
-                  <hr>
-                  <option value="add-sound" data-i18n="add_sound">Add Sound Source File...</option>
-                </select>
+            <div id="track-selector">
+              <span class="material-icons">keyboard_arrow_up</span>
+              <span class="material-icons">keyboard_arrow_up</span>
+              <label data-i18n="wheel_or_swipe_to_select_track">Wheel or Swipe to Select Track</label>
+              <span class="material-icons">keyboard_arrow_down</span>
+              <span class="material-icons">keyboard_arrow_down</span>
+            </div>
+          </div>
+          
+          <!-- リズムセクション -->
+          <div class="rhythm-section">
+            <div class="rhythm-tracks">
+              <div class="rhythm-track drop-zone" data-track="0" data-drop-message="" data-i18n-drop>
+                <div class="rhythm-grid"></div>
               </div>
-              <div class="rhythm-grid"></div>
+              <div class="rhythm-track drop-zone" data-track="1" data-drop-message="" data-i18n-drop>
+                <div class="rhythm-grid"></div>
+              </div>
             </div>
           </div>
         </div>
