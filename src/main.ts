@@ -419,13 +419,6 @@ class Sequencer {
     });
 
     const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
-    sequencerContainer.addEventListener('pointerdown', () => {
-      this.pointerDowned = true;
-    });
-    sequencerContainer.addEventListener('pointerup', (e) => {
-      if (!e.isPrimary || e.button !== 0) return;
-      this.pointerDowned = false;
-    });
     sequencerContainer.addEventListener('touchstart', (e) => { // 複数指で拡大縮小が出来てしまうのを防ぐ
       if (e.touches.length > 1) {
         e.preventDefault();
@@ -610,6 +603,13 @@ class Sequencer {
     document.getElementById('app')!.style.setProperty('--scrollbar-width', `${rolls.offsetHeight - rolls.clientHeight}px`);
     rolls.scrollTop = Sequencer.noteHeight * (12 * 2 + 2); // 2 octaves + extra space
     let beforeScrollLeft = 0, beforeScrollTop = rolls.scrollTop;
+    rolls.addEventListener('pointerdown', () => {
+      this.pointerDowned = true;
+    });
+    rolls.addEventListener('pointerup', (e) => {
+      if (!e.isPrimary || e.button !== 0) return;
+      this.pointerDowned = false;
+    });
     rolls.addEventListener('scroll', (e) => {
       if (this.pointerDowned) {
         this.autoScroll = false;
