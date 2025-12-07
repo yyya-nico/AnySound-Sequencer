@@ -414,16 +414,35 @@ header {
     flex-basis: 110px;
   }
 
-  .sound-select {
-    text-align: center;
-    text-align-last: center;
-    cursor: pointer;
-  }
+  .sound-select-label {
+    display: flex;
 
-  .remove-sound-btn {
-    align-self: center;
-    padding: 4px 8px;
-    font-size: 10px;
+    &.added-sound {
+      .sound-select {
+        border-inline-end: none;
+        border-radius: 5px 0 0 5px;
+      }
+
+      .remove-sound {
+        display: block;
+      }
+    }
+
+    .sound-select {
+      min-width: 0;
+      text-align: center;
+      text-align-last: center;
+      cursor: pointer;
+    }
+
+    .remove-sound {
+      display: none;
+      padding: 4px;
+      border: 1px solid gray;
+      border-inline-start: none;
+      border-radius: 0 5px 5px 0;
+      font-size: 18px;
+    }
   }
 
   .pitch-shift-label {
