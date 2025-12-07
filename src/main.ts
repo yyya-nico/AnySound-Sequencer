@@ -1380,12 +1380,11 @@ class Sequencer {
             const filename = value as string | null || 'sine';
             const file = this.files.find(f => f.file.name === filename)?.file || null;
             soundSelect.value = filename;
-            if (file) {
-              if (track === 'beat1') {
-                this.audioManager.setBeatSample(0, file);
-              } else if (track === 'beat2') {
-                this.audioManager.setBeatSample(1, file);
-              }
+            if (!file) return;
+            if (track === 'beat1') {
+              this.audioManager.setBeatSample(0, file);
+            } else if (track === 'beat2') {
+              this.audioManager.setBeatSample(1, file);
             }
           } 
         });
