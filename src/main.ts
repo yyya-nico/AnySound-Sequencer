@@ -1362,41 +1362,32 @@ class Sequencer {
       if (savedAudioFilenames) {
         this.filenames = savedAudioFilenames;
         Object.entries(savedAudioFilenames).forEach(([track, value]) => {
+          const container = document.querySelector(`.sound[data-track="${track}"]`) as HTMLElement;
+          const soundSelect = container.querySelector('.sound-select') as HTMLSelectElement;
           if (track === 'melody') {
             const filenames = value as Map<number, string>;
-            filenames.forEach((filename, track) => {
-              const audioFile = this.files.find(f => f.file.name === filename) || null;
-              if (audioFile && track === this.currentTrack && audioFile.pitchShift) {
-                const pitchShiftInput = document.getElementById('melody-pitch-shift') as HTMLInputElement;
-                if (pitchShiftInput) pitchShiftInput.valueAsNumber = audioFile.pitchShift;
-              }
-            });
-            const container = document.querySelector(`.sound[data-track="melody"]`) as HTMLElement;
-            const soundSelect = container.querySelector('.sound-select') as HTMLSelectElement;
-            const currentFilename = filenames.get(this.currentTrack) || 'sine';
-            soundSelect.value = currentFilename;
-            const isSine = currentFilename === 'sine';
+            const filename = filenames.get(this.currentTrack) || 'sine';
+            const audioFile = this.files.find(f => f.file.name === filename) || null;
+            if (audioFile && audioFile.pitchShift) {
+              const pitchShiftInput = document.getElementById('melody-pitch-shift') as HTMLInputElement;
+              if (pitchShiftInput) pitchShiftInput.valueAsNumber = audioFile.pitchShift;
+            }
             const pitchShiftLabel = document.querySelector('.pitch-shift-label') as HTMLElement;
+            const isSine = filename === 'sine';
+            soundSelect.value = filename;
             pitchShiftLabel.hidden = isSine;
-          } else if (track === 'beat1') {
+          } else {
             const filename = value as string | null || 'sine';
             const file = this.files.find(f => f.file.name === filename)?.file || null;
-            if (file) {
-              this.audioManager.setBeatSample(0, file);
-            }
-            const container = document.querySelector(`.sound[data-track="beat1"]`) as HTMLElement;
-            const soundSelect = container.querySelector('.sound-select') as HTMLSelectElement;
             soundSelect.value = filename;
-          } else if (track === 'beat2') {
-            const filename = value as string | null || 'sine';
-            const file = this.files.find(f => f.file.name === filename)?.file || null;
             if (file) {
-              this.audioManager.setBeatSample(1, file);
+              if (track === 'beat1') {
+                this.audioManager.setBeatSample(0, file);
+              } else if (track === 'beat2') {
+                this.audioManager.setBeatSample(1, file);
+              }
             }
-            const container = document.querySelector(`.sound[data-track="beat2"]`) as HTMLElement;
-            const soundSelect = container.querySelector('.sound-select') as HTMLSelectElement;
-            soundSelect.value = filename;
-          }
+          } 
         });
       }
     }
