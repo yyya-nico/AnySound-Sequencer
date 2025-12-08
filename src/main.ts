@@ -424,11 +424,11 @@ class Sequencer {
         e.preventDefault();
       }
     }, { passive: false });
-    // sequencerContainer.addEventListener('touchmove', (e) => {
-    //   if (e.touches.length === 1) { // 1本目の指は無視
-    //     e.preventDefault();
-    //   }
-    // }, { passive: false });
+    sequencerContainer.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 1) { // 1本目の指は無視
+        e.preventDefault();
+      }
+    }, { passive: false });
     let lastTouch = 0;
     sequencerContainer.addEventListener('touchend', (e) => { // ダブルタップズームを防ぐ
       const now = window.performance.now();

@@ -2,6 +2,12 @@
 @use "sass:map";
 @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&display=swap");
 
+@mixin small-width {
+  @media (width < 768px) {
+    @content;
+  }
+}
+
 @mixin touch-device {
   @media (hover: none) and (pointer: coarse) {
     @content;
@@ -373,6 +379,10 @@ header {
   min-height: 0;
   grid-area: 1 / 1 / 2 / 3;
   background: #1a1a1a;
+
+  @include small-width() {
+    --sound-panel-width: 150px;
+  }
 }
 
 .sounds {
@@ -468,6 +478,12 @@ header {
       font-size: 12px;
     }
   }
+
+  @include small-width() {
+    + .sound {
+      flex-basis: 75px;
+    }
+  }
 }
 
 .rolls {
@@ -479,6 +495,10 @@ header {
 
   &.playback-drag {
     cursor: col-resize;
+  }
+
+  @include small-width() {
+    grid-template-rows: auto 150px;
   }
 }
 
@@ -549,6 +569,14 @@ header {
     font-weight: 300;
     content: attr(data-track);
     pointer-events: none;
+  }
+
+  @include small-width() {
+    &::after {
+      width: 120px;
+      height: 120px;
+      font-size: 52px;
+    }
   }
 }
 
@@ -678,6 +706,7 @@ header {
 .control-panel {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
+  align-items: center;
   gap: 10px;
   background: #232323;
   border-block-start: 2px solid #333;
@@ -778,6 +807,10 @@ header {
 
   #bpm-slider {
     width: 100%;
+  }
+
+  @include small-width() {
+    width: 100px;
   }
 }
 
