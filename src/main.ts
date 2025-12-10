@@ -1422,23 +1422,24 @@ class Sequencer {
   }
 
   private updateViewPort() {
-    const section = document.querySelector('.piano-roll-section') as HTMLElement;
+    const rolls = document.querySelector('.rolls') as HTMLElement;
+    const rhythmSection = document.querySelector('.rhythm-section') as HTMLElement;
     
     // 現在の表示範囲を計算
-    const scrollLeft = section.scrollLeft;
-    const scrollTop = section.scrollTop;
-    const viewWidth = section.clientWidth;
-    const viewHeight = section.clientHeight;
+    const scrollLeft = rolls.scrollLeft;
+    const scrollTop = rolls.scrollTop;
+    const viewWidth = rolls.clientWidth;
+    const viewHeight = rolls.clientHeight;
+    const rhythmSectionHeight = rhythmSection.clientHeight;
+    const adjustedViewHeight = viewHeight - rhythmSectionHeight;
     
     // ビート範囲（少し余裕を持たせる）
-    const soundPanelWidth = 180; // CSS変数から取得
-    const adjustedLeft = Math.max(0, scrollLeft - soundPanelWidth);
-    this.viewPort.startBeat = Math.max(0, Math.floor(adjustedLeft / Sequencer.noteWidth) - 2);
-    this.viewPort.endBeat = Math.ceil((adjustedLeft + viewWidth) / Sequencer.noteWidth) + 2;
+    this.viewPort.startBeat = Math.max(0, Math.floor(scrollLeft / Sequencer.noteWidth) - 2);
+    this.viewPort.endBeat = Math.ceil((scrollLeft + viewWidth) / Sequencer.noteWidth) + 2;
 
     // ピッチ範囲
     this.viewPort.startPitch = 108 - Math.max(0, Math.floor(scrollTop / Sequencer.noteHeight) - 2);
-    this.viewPort.endPitch = 108 - Math.min(127, Math.ceil((scrollTop + viewHeight) / Sequencer.noteHeight) + 2);
+    this.viewPort.endPitch = 108 - Math.min(127, Math.ceil((scrollTop + adjustedViewHeight) / Sequencer.noteHeight) + 2);
   }
 
   private isNoteVisible(note: Note): boolean {
