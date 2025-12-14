@@ -393,15 +393,6 @@ header {
   border-inline-end: 1px solid #333;
   background: #1e1e1e;
   overflow: auto;
-
-  &::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    right: calc(var(--scrollbar-width, 0px) * -1);
-    width: var(--scrollbar-width, 0px);
-    height: 100%;
-  }
 }
 
 .sound {
@@ -669,15 +660,6 @@ header {
   position: relative;
   width: fit-content;
   height: 100%;
-
-  &::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    right: calc(var(--scrollbar-width, 0px) * -1);
-    width: var(--scrollbar-width, 0px);
-    height: 100%;
-  }
 }
 
 .rhythm-track {
