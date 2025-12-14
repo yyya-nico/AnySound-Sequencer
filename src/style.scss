@@ -390,6 +390,7 @@ header {
   flex-direction: column;
   flex-shrink: 0;
   width: var(--sound-panel-width);
+  padding-block-end: var(--scrollbar-width);
   border-inline-end: 1px solid #333;
   background: #1e1e1e;
   overflow: auto;
@@ -665,11 +666,6 @@ header {
 .rhythm-track {
   display: flex;
   flex-basis: 50%;
-  border-inline-end: 1px solid #333;
-
-  &:last-child {
-    border-inline-end: none;
-  }
 }
 
 .rhythm-grid {
