@@ -1268,7 +1268,7 @@ class Sequencer {
         captured = true;
       }
       const y = e.clientY;
-      const distance = y - beforeY;
+      const distance = beforeY - y;
 
       if (Math.abs(distance) > 40) {
         const direction = distance > 0 ? 1 : -1;
