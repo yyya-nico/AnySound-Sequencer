@@ -2,6 +2,7 @@ import localForage from 'localforage';
 import i18next from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import { MidiParser, MidiWriter, MidiConverter } from './midi';
+import { audioBufferToWav } from './wav';
 import { filenameToName, dispatchPointerPressEvent, resetAnimation, multipleFloor, minmax } from './utils';
 
 import en from './locales/en.json';
@@ -328,6 +329,95 @@ class AudioManager {
     if (this.context.state === 'suspended') {
       await this.context.resume();
     }
+  }
+
+  async renderMixToAudioBuffer(params: {
+    notes: Note[];
+    beats: Beat[];
+    filenames: Filenames;
+    files: AudioFile[];
+    bpm: number;
+    playbackSpeed: number;
+    totalBeats: number;
+    sampleRate?: number;
+    numChannels?: number;
+  }): Promise<AudioBuffer> {
+    const sampleRate = params.sampleRate || 44100;
+    const numChannels = params.numChannels || 2;
+    const durationSeconds = (params.totalBeats * 60) / params.bpm;
+
+    const offlineCtx = new OfflineAudioContext(numChannels, Math.ceil(durationSeconds * sampleRate), sampleRate);
+
+    const master = offlineCtx.createGain();
+    master.gain.value = 0.7;
+    master.connect(offlineCtx.destination);
+
+    const beatsToSeconds = (beats: number) => this.beatsToSeconds(beats, params.bpm);
+
+    const createSineBuffer = (frequency: number, duration: number) => {
+      const length = Math.ceil(duration * sampleRate);
+      const buf = offlineCtx.createBuffer(1, length, sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < length; i++) {
+        data[i] = Math.sin(2 * Math.PI * frequency * (i / sampleRate)) * Math.exp(-i / (sampleRate * duration));
+      }
+      return buf;
+    };
+
+    // Render melody notes
+    params.notes.forEach(note => {
+      const filename = params.filenames.melody.get(note.track) || 'sine';
+      const sample = this.melodySamples.get(filename)?.get(note.pitch);
+      if (!sample) return;
+
+      const startTime = beatsToSeconds(note.start);
+      const duration = beatsToSeconds(note.length);
+
+      const source = offlineCtx.createBufferSource();
+      const gain = offlineCtx.createGain();
+
+      if (sample.type === 'file' && sample.buffer instanceof AudioBuffer) {
+        source.buffer = sample.buffer;
+        const pitchShift = this.melodyPitchShifts.get(filename) || 0;
+        source.playbackRate.value = this.midiToPercentage(note.pitch, pitchShift);
+      } else {
+        source.buffer = createSineBuffer(this.midiToFrequency(note.pitch), duration);
+      }
+
+      gain.gain.value = (note.velocity / 127) * 0.7;
+
+      source.connect(gain);
+      gain.connect(master);
+      source.start(startTime);
+      source.stop(startTime + duration);
+    });
+
+    // Render beats
+    params.beats.forEach(beat => {
+      const sample = this.beatSamples.get(beat.track);
+      if (!sample) return;
+      const startTime = beatsToSeconds(beat.position);
+      const duration = 0.2;
+
+      const source = offlineCtx.createBufferSource();
+      const gain = offlineCtx.createGain();
+
+      if (sample.type === 'file' && sample.buffer instanceof AudioBuffer) {
+        source.buffer = sample.buffer;
+      } else {
+        const frequency = beat.track === 0 ? 200 : 150;
+        source.buffer = createSineBuffer(frequency, duration);
+      }
+
+      gain.gain.value = (beat.velocity / 127) * 0.7;
+
+      source.connect(gain);
+      gain.connect(master);
+      source.start(startTime);
+      source.stop(startTime + duration);
+    });
+
+    return offlineCtx.startRendering();
   }
 }
 
@@ -714,6 +804,10 @@ class Sequencer {
 
     document.getElementById('export-midi-btn')?.addEventListener('click', () => {
       this.exportMidi();
+    });
+
+    document.getElementById('export-wav-btn')?.addEventListener('click', async () => {
+      await this.exportWav();
     });
 
     if ('mediaSession' in navigator) {
@@ -2181,6 +2275,42 @@ class Sequencer {
       console.error('Error exporting MIDI file:', error);
       alert('Error exporting MIDI file.');
     }
+  }
+
+  async exportWav() {
+    const endOfTrack = this.getEndOfTrack();
+
+    if (endOfTrack <= 0) {
+      alert(i18next.t('export_error_no_data'));
+      return;
+    }
+
+    alert(i18next.t('export_wav_notice'));
+    document.body.style.cursor = 'progress';
+
+    const buffer = await this.audioManager.renderMixToAudioBuffer({
+      notes: this.notes,
+      beats: this.beats,
+      filenames: this.filenames,
+      files: this.files,
+      bpm: this.bpm * this.playbackSpeed,
+      playbackSpeed: this.playbackSpeed,
+      totalBeats: endOfTrack,
+      sampleRate: 44100,
+      numChannels: 2
+    });
+
+    const blob = audioBufferToWav(buffer, { sampleRate: buffer.sampleRate });
+    const filename = this.title || i18next.t('untitled');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}.wav`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    document.body.style.cursor = '';
+    alert(i18next.t('export_wav_done'));
   }
 }
 

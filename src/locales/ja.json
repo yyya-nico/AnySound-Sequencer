@@ -38,6 +38,10 @@
   "import_error_invalid_midi_file": "MIDIファイルのインポート中にエラーが発生しました。ファイル形式を確認してください。",
   "import_error_invalid_audio_file": "サポートされていないファイル形式です。オーディオファイル（mp3、wav、oggなど）またはMIDIファイルを使用してください。",
   "export_midi": "MIDIをエクスポート",
+  "export_wav": "WAVをエクスポート",
+  "export_error_no_data": "エクスポートできる音がありません。なにか音符やビートを追加してからお試しください。",
+  "export_wav_notice": "WAVのエクスポートには時間がかかる場合があります。",
+  "export_wav_done": "WAVのエクスポートが完了しました。",
   "clear_all": "全消去",
   "confirm_clear_all": "今までの作業をすべて消去しますか？",
   "drop_sound_or_midi": "音源ファイルまたはMIDIファイルをドロップ"

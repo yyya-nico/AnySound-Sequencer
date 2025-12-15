@@ -38,6 +38,10 @@
   "import_error_invalid_midi_file": "Error importing MIDI file. Please check the file format.",
   "import_error_invalid_audio_file": "Unsupported file format. Please use audio files (mp3, wav, ogg, etc.) or MIDI files.",
   "export_midi": "Export MIDI",
+  "export_wav": "Export WAV",
+  "export_error_no_data": "No data to export. Please add notes or beats before exporting.",
+  "export_wav_notice": "Exporting WAV may take some time.",
+  "export_wav_done": "WAV export completed.",
   "clear_all": "Clear All",
   "confirm_clear_all": "Are you sure you want to clear all the work?",
   "drop_sound_or_midi": "Drop sound source file or MIDI file"
