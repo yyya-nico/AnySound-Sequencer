@@ -27,6 +27,7 @@
   "beat_2_sound": "Beat 2 Sound",
   "sine_wave": "Sine Wave",
   "add_sound": "Add Sound Source File...",
+  "error_not_audio_file": "Not an audio file.",
   "confirm_remove_sound_file": "Are you sure you want to remove the sound source file '{{filename}}'?",
   "pitch_shift": "Pitch Shift",
   "clear_sounds": "Clear Sound Sources",

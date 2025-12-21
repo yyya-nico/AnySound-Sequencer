@@ -598,10 +598,11 @@ class Sequencer {
       const soundSelectLabel = container.querySelector('.sound-select-label') as HTMLElement;
       const soundSelect = container.querySelector('.sound-select') as HTMLSelectElement;
       const removeSoundBtn = container.querySelector('.remove-sound') as HTMLButtonElement;
+      const addSoundBtn = container.querySelector('.add-sound') as HTMLButtonElement;
       const selectAudioFiles = () => {
         const input = document.createElement('input');
         input.type = 'file';
-        input.accept = 'audio/*';
+        input.accept = '.wav,.mp3,.ogg,.flac,.aac,.m4a';
         input.multiple = true;
         const promise = new Promise<FileList | null>((resolve) => {
           input.onchange = (event) => {
@@ -618,47 +619,21 @@ class Sequencer {
         input.click();
         return promise;
       };
+      const soundPreview = (filename: string) => {
+        const noteId = `preview-sound-select-${Date.now()}`
+        const note: Note = {
+          id: noteId,
+          track: this.currentTrack,
+          pitch: 60, // C4
+          start: 0,
+          length: this.defaultNoteLength,
+          velocity: 100
+        };
+        this.audioManager.playNotePreview(note, filename, this.bpm * this.playbackSpeed, noteId);
+      };
       soundSelect.addEventListener('change', async (e) => {
         const value = (e.target as HTMLSelectElement).value;
-        const soundPreview = (filename: string) => {
-          const noteId = `preview-sound-select-${Date.now()}`
-          const note: Note = {
-            id: noteId,
-            track: this.currentTrack,
-            pitch: 60, // C4
-            start: 0,
-            length: this.defaultNoteLength,
-            velocity: 100
-          };
-          this.audioManager.playNotePreview(note, filename, this.bpm * this.playbackSpeed, noteId);
-        };
-        if (value === 'add-sound') {
-          soundSelectLabel.classList.remove('added-sound');
-          // 新しい音源ファイルを追加
-          selectAudioFiles().then(async files => {
-            if (!files || files.length === 0) {
-              // キャンセルされた場合は選択を戻す
-              if (track === 'melody') {
-                soundSelect.value = this.filenames.melody.get(this.currentTrack) || 'sine';
-              } else if (track === 'beat1') {
-                soundSelect.value = this.filenames.beat1 || 'sine';
-              } else if (track === 'beat2') {
-                soundSelect.value = this.filenames.beat2 || 'sine';
-              }
-              if (soundSelect.value !== 'sine') {
-                soundSelectLabel.classList.add('added-sound');
-              }
-              return;
-            }
-            [...files].forEach(file => {
-              const pitchShift = this.extractPitchShiftFromFilename(file.name);
-              this.addAudioFile(file, pitchShift);
-            });
-            const file = files[0];
-            await this.setAudio(track, file);
-            if (this.paused) soundPreview(file.name);
-          });
-        } else if (value === 'sine') {
+        if (value === 'sine') {
           // 正弦波を選択
           await this.setSine(track);
           if (this.paused) soundPreview('sine');
@@ -677,6 +652,37 @@ class Sequencer {
         if (filename && confirm(i18next.t('confirm_remove_sound_file', { filename: filenameToName(filename) }))) {
           this.removeAudioFile(filename);
         }
+      });
+
+      addSoundBtn.addEventListener('click', async () => {
+        selectAudioFiles().then(async files => {
+          if (!files || files.length === 0) {
+            // キャンセルされた場合は選択を戻す
+            if (track === 'melody') {
+              soundSelect.value = this.filenames.melody.get(this.currentTrack) || 'sine';
+            } else if (track === 'beat1') {
+              soundSelect.value = this.filenames.beat1 || 'sine';
+            } else if (track === 'beat2') {
+              soundSelect.value = this.filenames.beat2 || 'sine';
+            }
+            if (soundSelect.value !== 'sine') {
+              soundSelectLabel.classList.add('added-sound');
+            }
+            return;
+          }
+          const isAudio = Array.from(files).every(file => file.type.startsWith('audio/'));
+          if (!isAudio) {
+            alert(i18next.t('error_not_audio_file'));
+            return;
+          }
+          [...files].forEach(file => {
+            const pitchShift = this.extractPitchShiftFromFilename(file.name);
+            this.addAudioFile(file, pitchShift);
+          });
+          const file = files[0];
+          await this.setAudio(track, file);
+          if (this.paused) soundPreview(file.name);
+        });
       });
     });
 
@@ -921,10 +927,7 @@ class Sequencer {
       const option = document.createElement('option');
       option.value = file.name;
       option.text = filenameToName(file.name);
-      const selectHrElement = soundSelect.querySelector('hr');
-      if (selectHrElement) {
-        soundSelect.insertBefore(option, selectHrElement);
-      }
+      soundSelect.appendChild(option);
     });
   }
 
@@ -1467,10 +1470,7 @@ class Sequencer {
           const option = document.createElement('option');
           option.value = file.name;
           option.text = filenameToName(file.name);
-          const selectHrElement = soundSelect.querySelector('hr');
-          if (selectHrElement) {
-            soundSelect.insertBefore(option, selectHrElement);
-          }
+          soundSelect.appendChild(option);
         });
       });
       if (savedAudioFilenames) {

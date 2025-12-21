@@ -27,6 +27,7 @@
   "beat_2_sound": "ビート 2 音色",
   "sine_wave": "正弦波",
   "add_sound": "音源ファイルを追加...",
+  "error_not_audio_file": "音源ファイルではありません。",
   "confirm_remove_sound_file": "音源ファイル '{{filename}}' を削除しますか？",
   "pitch_shift": "ピッチシフト",
   "clear_sounds": "音源ファイルをすべて消去",
