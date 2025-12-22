@@ -686,6 +686,7 @@ class Sequencer {
       });
     });
 
+    let currentPreviewId: string | null = null;
     document.getElementById('melody-pitch-shift')?.addEventListener('input', (e) => {
       const filename = this.filenames.melody.get(this.currentTrack) || 'sine';
       const audioFile = this.files.find(f => f.file.name === filename) || null;
@@ -697,16 +698,20 @@ class Sequencer {
 
       if (!this.paused) return;
 
-      const noteId = `preview-pitch-shift-${Date.now()}`
+      if (currentPreviewId) {
+        this.audioManager.stopPreview(currentPreviewId);
+      }
+
+      currentPreviewId = `preview-pitch-shift-${Date.now()}`
       const note: Note = {
-        id: noteId,
+        id: currentPreviewId,
         track: this.currentTrack,
         pitch: 60, // C4にピッチシフトが反映される
         start: 0,
         length: this.defaultNoteLength,
         velocity: 100
       };
-      this.audioManager.playNotePreview(note, filename, this.bpm * this.playbackSpeed, noteId);
+      this.audioManager.playNotePreview(note, filename, this.bpm * this.playbackSpeed, currentPreviewId);
     });
 
     const rolls = document.querySelector('.rolls') as HTMLElement;
