@@ -702,7 +702,7 @@ class Sequencer {
         this.audioManager.stopPreview(currentPreviewId);
       }
 
-      currentPreviewId = `preview-pitch-shift-${Date.now()}`
+      currentPreviewId = `preview-pitch-shift-${Date.now()}`;
       const note: Note = {
         id: currentPreviewId,
         track: this.currentTrack,
