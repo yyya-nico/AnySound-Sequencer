@@ -2285,7 +2285,8 @@ class Sequencer {
       return;
     }
 
-    alert(i18next.t('export_wav_notice'));
+    const filename = this.title || i18next.t('untitled');
+    if (!confirm(i18next.t('export_wav_notice'))) return;
     document.body.style.cursor = 'progress';
 
     const buffer = await this.audioManager.renderMixToAudioBuffer({
@@ -2301,7 +2302,6 @@ class Sequencer {
     });
 
     const blob = audioBufferToWav(buffer, { sampleRate: buffer.sampleRate });
-    const filename = this.title || i18next.t('untitled');
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
