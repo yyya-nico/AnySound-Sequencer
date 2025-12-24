@@ -826,6 +826,46 @@ class Sequencer {
       }
     });
 
+    // Two-finger touch scrolling on rolls: use the second finger movement to scroll
+    const dpr = window.devicePixelRatio || 1;
+    let twoFingerScrolling = false;
+    let lastSecondTouchX = 0;
+    let lastSecondTouchY = 0;
+
+    rolls.addEventListener('touchstart', (e: TouchEvent) => {
+      if ((e.touches && e.touches.length) >= 2) {
+        // initialize second finger position
+        twoFingerScrolling = true;
+        lastSecondTouchX = e.touches[1].clientX;
+        lastSecondTouchY = e.touches[1].clientY;
+      }
+    }, { passive: false });
+
+    rolls.addEventListener('touchmove', (e: TouchEvent) => {
+      if (!twoFingerScrolling) return;
+      if (!e.touches || e.touches.length < 2) return;
+      // Prevent default to avoid browser pinch/scroll interference
+      e.preventDefault();
+
+      const t = e.touches[1];
+      const dx = (lastSecondTouchX - t.clientX) / dpr;
+      const dy = (lastSecondTouchY - t.clientY) / dpr;
+
+      // Scroll by opposite of finger movement to feel natural
+      rolls.scrollBy({ left: dx, top: dy });
+
+      lastSecondTouchX = t.clientX;
+      lastSecondTouchY = t.clientY;
+    }, { passive: false });
+
+    const endTwoFinger = () => {
+      twoFingerScrolling = false;
+    };
+    rolls.addEventListener('touchend', (e: TouchEvent) => {
+      if (e.touches && e.touches.length < 2) endTwoFinger();
+    });
+    rolls.addEventListener('touchcancel', endTwoFinger);
+
     const playbackPosition = document.querySelector('.playback-position') as HTMLElement;
     let playbackDragging = false;
     let beforePos = 0;
