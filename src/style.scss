@@ -895,6 +895,23 @@ header {
   }
 }
 
+#dialog[open] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  bottom: calc(100dvh - var(--vvh, 100dvh));
+  margin: auto;
+  padding: 20px 30px;
+  border: 0;
+  border-radius: 6px;
+  background-color: #272727;
+
+  &::backdrop {
+    background-color: #0000007f;
+  }
+}
+
 // Grid styles for piano roll and rhythm
 .grid {
   background-image: linear-gradient(to right, #333 1px, transparent 1px),

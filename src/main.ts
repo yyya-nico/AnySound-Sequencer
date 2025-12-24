@@ -2,7 +2,6 @@ import localForage from 'localforage';
 import i18next from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import { MidiParser, MidiWriter, MidiConverter } from './midi';
-import { audioBufferToWav } from './wav';
 import { filenameToName, dispatchPointerPressEvent, resetAnimation, multipleFloor, minmax } from './utils';
 
 import en from './locales/en.json';
@@ -341,83 +340,171 @@ class AudioManager {
     totalBeats: number;
     sampleRate?: number;
     numChannels?: number;
-  }): Promise<AudioBuffer> {
+  }, onProgress?: (processedSamples: number, totalSamples: number) => void): Promise<AudioBuffer> {
     const sampleRate = params.sampleRate || 44100;
     const numChannels = params.numChannels || 2;
     const durationSeconds = (params.totalBeats * 60) / params.bpm;
 
-    const offlineCtx = new OfflineAudioContext(numChannels, Math.ceil(durationSeconds * sampleRate), sampleRate);
+    const totalSamples = Math.ceil(durationSeconds * sampleRate);
 
-    const master = offlineCtx.createGain();
-    master.gain.value = 0.7;
-    master.connect(offlineCtx.destination);
+    // Prepare output buffers
+    const outputs: Float32Array[] = [];
+    for (let ch = 0; ch < numChannels; ch++) outputs.push(new Float32Array(totalSamples));
 
     const beatsToSeconds = (beats: number) => this.beatsToSeconds(beats, params.bpm);
 
-    const createSineBuffer = (frequency: number, duration: number) => {
-      const length = Math.ceil(duration * sampleRate);
-      const buf = offlineCtx.createBuffer(1, length, sampleRate);
-      const data = buf.getChannelData(0);
-      for (let i = 0; i < length; i++) {
-        data[i] = Math.sin(2 * Math.PI * frequency * (i / sampleRate)) * Math.exp(-i / (sampleRate * duration));
-      }
-      return buf;
+    type NoteInfo = {
+      note: Note;
+      startSample: number;
+      endSample: number;
+      isSine: boolean;
+      frequency?: number;
+      durationSec?: number;
+      sourceData?: Float32Array[];
+      sourceSampleRate?: number;
+      playbackRate?: number;
+      gain: number;
     };
 
-    // Render melody notes
+    const noteInfos: NoteInfo[] = [];
+
     params.notes.forEach(note => {
       const filename = params.filenames.melody.get(note.track) || 'sine';
       const sample = this.melodySamples.get(filename)?.get(note.pitch);
       if (!sample) return;
-
-      const startTime = beatsToSeconds(note.start);
-      const duration = beatsToSeconds(note.length);
-
-      const source = offlineCtx.createBufferSource();
-      const gain = offlineCtx.createGain();
+      const startSample = Math.floor(beatsToSeconds(note.start) * sampleRate);
+      const durationSec = beatsToSeconds(note.length);
+      const endSample = Math.min(totalSamples, startSample + Math.ceil(durationSec * sampleRate));
+      const gain = (note.velocity / 127) * 0.7;
 
       if (sample.type === 'file' && sample.buffer instanceof AudioBuffer) {
-        source.buffer = sample.buffer;
-        const pitchShift = this.melodyPitchShifts.get(filename) || 0;
-        source.playbackRate.value = this.midiToPercentage(note.pitch, pitchShift);
+        const srcBuf = sample.buffer;
+        const srcChannels: Float32Array[] = [];
+        for (let c = 0; c < srcBuf.numberOfChannels; c++) srcChannels.push(srcBuf.getChannelData(c));
+        const playbackRate = this.midiToPercentage(note.pitch, this.melodyPitchShifts.get(filename) || 0);
+        noteInfos.push({ note, startSample, endSample, isSine: false, sourceData: srcChannels, sourceSampleRate: srcBuf.sampleRate, playbackRate, gain });
       } else {
-        source.buffer = createSineBuffer(this.midiToFrequency(note.pitch), duration);
+        noteInfos.push({ note, startSample, endSample, isSine: true, frequency: this.midiToFrequency(note.pitch), durationSec, gain });
       }
-
-      gain.gain.value = (note.velocity / 127) * 0.7;
-
-      source.connect(gain);
-      gain.connect(master);
-      source.start(startTime);
-      source.stop(startTime + duration);
     });
 
-    // Render beats
+    type BeatInfo = {
+      beat: Beat;
+      startSample: number;
+      endSample: number;
+      isSine: boolean;
+      frequency?: number;
+      sourceData?: Float32Array[];
+      sourceSampleRate?: number;
+      gain: number;
+    };
+
+    const beatInfos: BeatInfo[] = [];
     params.beats.forEach(beat => {
       const sample = this.beatSamples.get(beat.track);
       if (!sample) return;
-      const startTime = beatsToSeconds(beat.position);
-      const duration = 0.2;
-
-      const source = offlineCtx.createBufferSource();
-      const gain = offlineCtx.createGain();
+      const startSample = Math.floor(beatsToSeconds(beat.position) * sampleRate);
+      const durationSec = 0.2;
+      const endSample = Math.min(totalSamples, startSample + Math.ceil(durationSec * sampleRate));
+      const gain = (beat.velocity / 127) * 0.7;
 
       if (sample.type === 'file' && sample.buffer instanceof AudioBuffer) {
-        source.buffer = sample.buffer;
+        const srcBuf = sample.buffer;
+        const srcChannels: Float32Array[] = [];
+        for (let c = 0; c < srcBuf.numberOfChannels; c++) srcChannels.push(srcBuf.getChannelData(c));
+        beatInfos.push({ beat, startSample, endSample, isSine: false, sourceData: srcChannels, sourceSampleRate: srcBuf.sampleRate, gain });
       } else {
         const frequency = beat.track === 0 ? 200 : 150;
-        source.buffer = createSineBuffer(frequency, duration);
+        beatInfos.push({ beat, startSample, endSample, isSine: true, frequency, gain });
       }
-
-      gain.gain.value = (beat.velocity / 127) * 0.7;
-
-      source.connect(gain);
-      gain.connect(master);
-      source.start(startTime);
-      source.stop(startTime + duration);
     });
 
-    return offlineCtx.startRendering();
+    const blockSize = 16384;
+    for (let blockStart = 0; blockStart < totalSamples; blockStart += blockSize) {
+      const blockEnd = Math.min(totalSamples, blockStart + blockSize);
+
+      // Process notes intersecting this block
+      for (const ni of noteInfos) {
+        if (ni.endSample <= blockStart || ni.startSample >= blockEnd) continue;
+        const sStart = Math.max(blockStart, ni.startSample);
+        const sEnd = Math.min(blockEnd, ni.endSample);
+
+        if (ni.isSine) {
+          const freq = ni.frequency!;
+          const dur = ni.durationSec || ((ni.endSample - ni.startSample) / sampleRate);
+          for (let i = sStart; i < sEnd; i++) {
+            const t = (i - ni.startSample) / sampleRate;
+            const val = Math.sin(2 * Math.PI * freq * t) * Math.exp(-t / Math.max(0.001, dur));
+            for (let ch = 0; ch < numChannels; ch++) outputs[ch][i] += val * ni.gain;
+          }
+        } else {
+          const srcRate = ni.sourceSampleRate || sampleRate;
+          const playbackRate = ni.playbackRate || 1;
+          const srcLen = ni.sourceData![0].length;
+          for (let i = sStart; i < sEnd; i++) {
+            const timeSinceStart = (i - ni.startSample) / sampleRate;
+            const srcIndex = timeSinceStart * playbackRate * srcRate;
+            if (srcIndex < 0 || srcIndex >= srcLen) continue;
+            const idx0 = Math.floor(srcIndex);
+            const frac = srcIndex - idx0;
+            for (let ch = 0; ch < numChannels; ch++) {
+              const srcCh = ni.sourceData![Math.min(ch, ni.sourceData!.length - 1)];
+              const s0 = srcCh[idx0] || 0;
+              const s1 = srcCh[idx0 + 1] || 0;
+              const val = s0 * (1 - frac) + s1 * frac;
+              outputs[ch][i] += val * ni.gain;
+            }
+          }
+        }
+      }
+
+      // Process beats in this block
+      for (const bi of beatInfos) {
+        if (bi.endSample <= blockStart || bi.startSample >= blockEnd) continue;
+        const sStart = Math.max(blockStart, bi.startSample);
+        const sEnd = Math.min(blockEnd, bi.endSample);
+
+        if (bi.isSine) {
+          const freq = bi.frequency!;
+          const dur = (bi.endSample - bi.startSample) / sampleRate;
+          for (let i = sStart; i < sEnd; i++) {
+            const t = (i - bi.startSample) / sampleRate;
+            const val = Math.sin(2 * Math.PI * freq * t) * Math.exp(-t / Math.max(0.001, dur));
+            for (let ch = 0; ch < numChannels; ch++) outputs[ch][i] += val * bi.gain;
+          }
+        } else {
+          const srcRate = bi.sourceSampleRate || sampleRate;
+          const srcLen = bi.sourceData![0].length;
+          for (let i = sStart; i < sEnd; i++) {
+            const timeSinceStart = (i - bi.startSample) / sampleRate;
+            const srcIndex = timeSinceStart * srcRate;
+            if (srcIndex < 0 || srcIndex >= srcLen) continue;
+            const idx0 = Math.floor(srcIndex);
+            const frac = srcIndex - idx0;
+            for (let ch = 0; ch < numChannels; ch++) {
+              const srcCh = bi.sourceData![Math.min(ch, bi.sourceData!.length - 1)];
+              const s0 = srcCh[idx0] || 0;
+              const s1 = srcCh[idx0 + 1] || 0;
+              const val = s0 * (1 - frac) + s1 * frac;
+              outputs[ch][i] += val * bi.gain;
+            }
+          }
+        }
+      }
+
+      // Notify progress
+      if (onProgress) onProgress(Math.min(blockEnd, totalSamples), totalSamples);
+
+      // yield to event loop to keep UI responsive
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+
+    // Create AudioBuffer and copy outputs
+    const audioBuffer = new AudioBuffer({ length: totalSamples, numberOfChannels: numChannels, sampleRate });
+    for (let ch = 0; ch < numChannels; ch++) {
+      audioBuffer.getChannelData(ch).set(outputs[ch]);
+    }
+    return audioBuffer;
   }
 }
 
@@ -2291,9 +2378,42 @@ class Sequencer {
     }
 
     const filename = this.title || i18next.t('untitled');
-    if (!confirm(i18next.t('export_wav_notice'))) return;
-    document.body.style.cursor = 'progress';
 
+    // Create a simple modal/progress UI (mixing 0-90%, encode 90-100%)
+    const createProgressModal = () => {
+      const dialog = document.getElementById('dialog') as HTMLDialogElement;
+
+      const label = document.createElement('div');
+      label.textContent = i18next.t('export_wav_progress') || 'Exporting...';
+
+      const progress = document.createElement('progress');
+      progress.max = 100;
+      progress.value = 0;
+      progress.style.width = '360px';
+
+      const percent = document.createElement('div');
+      percent.textContent = '0%';
+
+      dialog.appendChild(label);
+      dialog.appendChild(progress);
+      dialog.appendChild(percent);
+      dialog.showModal();
+
+      return {
+        update: (p: number) => {
+          progress.value = Math.min(100, Math.max(0, p));
+          percent.textContent = `${Math.round(p)}%`;
+        },
+        destroy: () => {
+          dialog.close();
+          dialog.textContent = '';
+        }
+      };
+    };
+
+    const modal = createProgressModal();
+
+    // Render mix with progress callback (maps to 0-90%)
     const buffer = await this.audioManager.renderMixToAudioBuffer({
       notes: this.notes,
       beats: this.beats,
@@ -2304,18 +2424,61 @@ class Sequencer {
       totalBeats: endOfTrack,
       sampleRate: 44100,
       numChannels: 2
+    }, (processed, total) => {
+      const mixPct = (processed / total) * 100;
+      modal.update(Math.min(90, mixPct * 0.9));
     });
 
-    const blob = audioBufferToWav(buffer, { sampleRate: buffer.sampleRate });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${filename}.wav`;
-    a.click();
-    URL.revokeObjectURL(url);
+    // Prepare channel data and spawn worker for WAV encoding (encode maps to 90-100%)
+    const numChannels = buffer.numberOfChannels;
+    const sampleRate = buffer.sampleRate;
+    const length = buffer.length;
 
-    document.body.style.cursor = '';
-    alert(i18next.t('export_wav_done'));
+    const channels: Float32Array[] = [];
+    for (let i = 0; i < numChannels; i++) {
+      // copy data into transferable Float32Array
+      channels.push(new Float32Array(buffer.getChannelData(i)));
+    }
+
+    const worker = new Worker(new URL('./wav.worker.ts', import.meta.url), { type: 'module' });
+
+    const onError = (msg: string) => {
+      console.error('WAV worker error:', msg);
+      modal.destroy();
+      try { worker.terminate(); } catch {}
+    };
+
+    worker.onmessage = (ev) => {
+      const data = ev.data;
+      if (!data) return;
+      if (data.type === 'progress') {
+        const processed = data.processed || 0;
+        const total = data.total || length;
+        const encodePct = (processed / total);
+        const overall = 90 + encodePct * 10;
+        modal.update(overall);
+      } else if (data.type === 'done') {
+        const arrayBuffer = data.buffer as ArrayBuffer;
+        const blob = new Blob([arrayBuffer], { type: 'audio/wav' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${filename}.wav`;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        modal.destroy();
+        try { worker.terminate(); } catch {}
+      } else if (data.type === 'error') {
+        onError(data.message);
+      }
+    };
+
+    // Transfer underlying ArrayBuffers of Float32Arrays to worker
+    const transferList = channels.map(ch => ch.buffer as ArrayBuffer);
+    worker.postMessage({
+      type: 'encode', sampleRate, numChannels, length, bitsPerSample: 16, channels: transferList
+    }, transferList);
   }
 }
 
