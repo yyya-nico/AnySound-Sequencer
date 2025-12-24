@@ -344,6 +344,7 @@ class AudioManager {
     const sampleRate = params.sampleRate || 44100;
     const numChannels = params.numChannels || 2;
     const durationSeconds = (params.totalBeats * 60) / params.bpm;
+    const masterGain = 0.7;
 
     const totalSamples = Math.ceil(durationSeconds * sampleRate);
 
@@ -375,7 +376,7 @@ class AudioManager {
       const startSample = Math.floor(beatsToSeconds(note.start) * sampleRate);
       const durationSec = beatsToSeconds(note.length);
       const endSample = Math.min(totalSamples, startSample + Math.ceil(durationSec * sampleRate));
-      const gain = (note.velocity / 127) * 0.7;
+      const gain = masterGain * (note.velocity / 127) * 0.5;
 
       if (sample.type === 'file' && sample.buffer instanceof AudioBuffer) {
         const srcBuf = sample.buffer;
@@ -406,7 +407,7 @@ class AudioManager {
       const startSample = Math.floor(beatsToSeconds(beat.position) * sampleRate);
       const durationSec = 0.2;
       const endSample = Math.min(totalSamples, startSample + Math.ceil(durationSec * sampleRate));
-      const gain = (beat.velocity / 127) * 0.7;
+      const gain = masterGain * (beat.velocity / 127) * 0.7;
 
       if (sample.type === 'file' && sample.buffer instanceof AudioBuffer) {
         const srcBuf = sample.buffer;
