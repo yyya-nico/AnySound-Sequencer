@@ -41,8 +41,7 @@
   "export_midi": "MIDIをエクスポート",
   "export_wav": "WAVをエクスポート",
   "export_error_no_data": "エクスポートできる音がありません。なにか音符やビートを追加してからお試しください。",
-  "export_wav_notice": "WAVのエクスポートには時間がかかる場合があります。",
-  "export_wav_done": "WAVのエクスポートが完了しました。",
+  "export_wav_progress": "WAVをエクスポート中...",
   "clear_all": "全消去",
   "confirm_clear_all": "今までの作業をすべて消去しますか？",
   "drop_sound_or_midi": "音源ファイルまたはMIDIファイルをドロップ"

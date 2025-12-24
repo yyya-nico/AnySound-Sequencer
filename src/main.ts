@@ -2424,7 +2424,7 @@ class Sequencer {
       const dialog = document.getElementById('dialog') as HTMLDialogElement;
 
       const label = document.createElement('div');
-      label.textContent = i18next.t('export_wav_progress') || 'Exporting...';
+      label.textContent = i18next.t('export_wav_progress');
 
       const progress = document.createElement('progress');
       progress.max = 100;
