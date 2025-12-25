@@ -1671,9 +1671,10 @@ class Sequencer {
     const rollsRect = rolls.getBoundingClientRect();
     const x = e.clientX - rollsRect.left, y = e.clientY - rollsRect.top;
     const edgeThreshold = 50;
-    const rythmSectionHeight = 220;
+    const rhythmSection = document.querySelector('.rhythm-section') as HTMLElement;
+    const rhythmSectionHeight = rhythmSection.clientHeight;
 
-    if (!horizontalOnly && y > rollsRect.height - edgeThreshold - rythmSectionHeight) {
+    if (!horizontalOnly && y > rollsRect.height - edgeThreshold - rhythmSectionHeight) {
       rolls.scrollBy({ top: 20 });
     }
     if (x > rollsRect.width - edgeThreshold) {
