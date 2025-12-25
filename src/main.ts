@@ -554,6 +554,7 @@ class Sequencer {
   private isRectangleSelecting: boolean = false;
   private selectionStartX: number = 0;
   private selectionStartY: number = 0;
+  private multiTouched: boolean = false; // true when 2+ touch points are active
 
   constructor() {
     this.audioManager = new AudioManager();
@@ -597,23 +598,10 @@ class Sequencer {
     });
 
     const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
-    sequencerContainer.addEventListener('touchstart', (e) => { // 複数指で拡大縮小が出来てしまうのを防ぐ
-      if (e.touches.length > 1) {
-        e.preventDefault();
-      }
-    }, { passive: false });
     sequencerContainer.addEventListener('touchmove', (e) => {
-      if (e.touches.length === 1) { // 1本目の指は無視
+      if (!this.multiTouched) { // 1本目の指は無視
         e.preventDefault();
       }
-    }, { passive: false });
-    let lastTouch = 0;
-    sequencerContainer.addEventListener('touchend', (e) => { // ダブルタップズームを防ぐ
-      const now = window.performance.now();
-      if (now - lastTouch <= 500) {
-        e.preventDefault();
-      }
-      lastTouch = now;
     }, { passive: false });
 
     // BPM control
@@ -827,46 +815,6 @@ class Sequencer {
       }
     });
 
-    // Two-finger touch scrolling on rolls: use the second finger movement to scroll
-    const dpr = window.devicePixelRatio || 1;
-    let twoFingerScrolling = false;
-    let lastSecondTouchX = 0;
-    let lastSecondTouchY = 0;
-
-    rolls.addEventListener('touchstart', (e: TouchEvent) => {
-      if ((e.touches && e.touches.length) >= 2) {
-        // initialize second finger position
-        twoFingerScrolling = true;
-        lastSecondTouchX = e.touches[1].clientX;
-        lastSecondTouchY = e.touches[1].clientY;
-      }
-    }, { passive: false });
-
-    rolls.addEventListener('touchmove', (e: TouchEvent) => {
-      if (!twoFingerScrolling) return;
-      if (!e.touches || e.touches.length < 2) return;
-      // Prevent default to avoid browser pinch/scroll interference
-      e.preventDefault();
-
-      const t = e.touches[1];
-      const dx = (lastSecondTouchX - t.clientX) / dpr;
-      const dy = (lastSecondTouchY - t.clientY) / dpr;
-
-      // Scroll by opposite of finger movement to feel natural
-      rolls.scrollBy({ left: dx, top: dy });
-
-      lastSecondTouchX = t.clientX;
-      lastSecondTouchY = t.clientY;
-    }, { passive: false });
-
-    const endTwoFinger = () => {
-      twoFingerScrolling = false;
-    };
-    rolls.addEventListener('touchend', (e: TouchEvent) => {
-      if (e.touches && e.touches.length < 2) endTwoFinger();
-    });
-    rolls.addEventListener('touchcancel', endTwoFinger);
-
     const playbackPosition = document.querySelector('.playback-position') as HTMLElement;
     let playbackDragging = false;
     let beforePos = 0;
@@ -883,6 +831,21 @@ class Sequencer {
     });
     
     const pianoRollSection = document.querySelector('.piano-roll-section') as HTMLElement;
+    // マルチタッチ検知: 2本以上で有効にして、以降のポインター操作でノート追加を無視する
+    (['touchstart', 'touchmove', 'touchend'] as (keyof HTMLElementEventMap)[]).forEach(eventName => {
+      pianoRollSection.addEventListener(eventName, (e) => {
+        const touchEvent = e as TouchEvent;
+        if (touchEvent.touches.length >= 2) {
+          this.multiTouched = true;
+        }
+      }, { passive: true });
+    });
+    pianoRollSection.addEventListener('touchend', (e) => {
+      const touchEvent = e as TouchEvent;
+      if (touchEvent.touches.length === 0) {
+        this.multiTouched = false;
+      }
+    });
 
     playbackPosition.addEventListener('pointerdown', (e) => {
       if (!e.isPrimary || e.button !== 0) return; // 左クリックのみ
@@ -1264,6 +1227,7 @@ class Sequencer {
 
     pianoRoll.addEventListener('pointerdown', (e) => {
       if (!e.isPrimary || e.button !== 0) return; // 左クリックのみ
+      if ((e as PointerEvent).pointerType === 'touch' && this.multiTouched) return; // 2本以上の指ならノート操作を無視
       
       // Ctrlキーが押されている場合は矩形選択開始
       if (e.ctrlKey || e.metaKey) {
@@ -1309,6 +1273,18 @@ class Sequencer {
 
     pianoRoll.addEventListener('pointermove', (e) => {
       if (!e.isPrimary || e.buttons !== 1) return; // 左クリックのみ
+      if ((e as PointerEvent).pointerType === 'touch' && this.multiTouched) {
+        const noteId = currentNote?.id || null;
+        if (noteId) {
+          this.removeNote(noteId);
+          currentNote = null;
+        }
+        if (currentPreviewId) {
+          this.audioManager.stopPreview(currentPreviewId);
+          currentPreviewId = null;
+        }
+        return; // マルチタッチ中の移動は無視
+      }
       
       if (this.isRectangleSelecting) {
         this.updateSelectionBox(e, pianoRoll);
@@ -1319,6 +1295,18 @@ class Sequencer {
 
     document.addEventListener('pointerup', (e) => {
       if (!e.isPrimary || e.button !== 0) return; // 左クリックのみ
+      if ((e as PointerEvent).pointerType === 'touch' && this.multiTouched) {
+        const noteId = currentNote?.id || null;
+        if (noteId) {
+          this.removeNote(noteId);
+          currentNote = null;
+        }
+        if (currentPreviewId) {
+          this.audioManager.stopPreview(currentPreviewId);
+          currentPreviewId = null;
+        }
+        return; // マルチタッチ中の移動は無視
+      }
       
       if (this.isRectangleSelecting) {
         this.endRectangleSelection(pianoRoll);
