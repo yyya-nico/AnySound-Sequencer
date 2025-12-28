@@ -550,9 +550,10 @@ class Sequencer {
   private gridSize: number = 64; // 64 beats
   private visibleNoteElements: Map<string, HTMLElement> = new Map(); // noteId -> element
   private saveTimeout: number | null = null;
-  private lastBpmChangeTime: number = 0;
-  private lastBpmChangeBeat: number = 0;
-  private lastAppliedTempoBeat: number = -1;
+  private bpmChanged: { time: number; beat: number; } = {
+    time: 0,
+    beat: 0
+  };
   private currentBeat: number = 0;
   private playedNotes: Set<string> = new Set();
   private pointerDowned: boolean = false;
@@ -624,7 +625,7 @@ class Sequencer {
 
         // 再生中の場合、現在のビート位置を記録してからBPMを変更
         if (!this.paused) {
-          this.updateBpmDuringPlayback();
+          this.recordBpmChanged();
         }
         this.bpm = newBpm;
 
@@ -661,7 +662,7 @@ class Sequencer {
       
       // 再生中の場合、現在のビート位置を記録してから再生速度を変更
       if (!this.paused) {
-        this.updateBpmDuringPlayback();
+        this.recordBpmChanged();
       }
       this.playbackSpeed = newPlaybackSpeed;
     });
@@ -1866,7 +1867,6 @@ class Sequencer {
     this.beats = [];
     this.bpm = 120;
     this.bpms = new Map();
-    this.lastAppliedTempoBeat = -1;
     this.playbackSpeed = 1;
     this.instrumentCodes = {};
     this.gridSize = 64;
@@ -2169,16 +2169,14 @@ class Sequencer {
     return beat * 60 / (this.bpm * this.playbackSpeed);
   }
 
-  private updateBpmDuringPlayback() {
+  private recordBpmChanged() {
     if (this.paused) return;
     
-    // 現在のビート位置
-    const now = performance.now();
-    this.currentBeat = this.getCurrentBeat(now);
-    
     // 新しいBPMでの基準点を更新
-    this.lastBpmChangeTime = now;
-    this.lastBpmChangeBeat = this.currentBeat;
+    this.bpmChanged = {
+      time: performance.now(),
+      beat: this.currentBeat
+    };
 
     // Update Media Session position state
     if ('mediaSession' in navigator) {
@@ -2190,50 +2188,36 @@ class Sequencer {
   }
 
   private resetPlayback() {
-    this.lastBpmChangeTime = performance.now();
-    this.lastBpmChangeBeat = 0;
     this.currentBeat = 0;
+    if (!this.paused) {
+      this.recordBpmChanged();
+    }
     this.playedNotes.clear();
     this.autoScroll = true;
     const rolls = document.querySelector('.rolls') as HTMLElement;
     const playbackPosition = document.querySelector('.playback-position') as HTMLElement;
     rolls.scrollTo({ left: 0 });
     playbackPosition.style.removeProperty('--position');
-    if ('mediaSession' in navigator) {
-      navigator.mediaSession.setPositionState({
-        duration: this.positionToSec(this.getEndOfTrack()),
-        position: 0,
-      });
-    }
   }
 
   private getCurrentBeat(now = performance.now()): number {
-      const elapsedSinceLastBpmChange = (now - this.lastBpmChangeTime) / 1000;
+      const elapsedSinceLastBpmChange = (now - this.bpmChanged.time) / 1000;
       const beatsSinceLastBpmChange = elapsedSinceLastBpmChange * (this.bpm * this.playbackSpeed) / 60;
-      const currentBeat = this.lastBpmChangeBeat + beatsSinceLastBpmChange;
+      const currentBeat = this.bpmChanged.beat + beatsSinceLastBpmChange;
       return currentBeat;
   }
 
   private applyTempoChangesUpTo(targetBeat: number) {
     if (!this.bpms || this.bpms.size === 0) return;
 
-    const applicable = Array.from(this.bpms.entries()).filter(([beat]) => beat <= targetBeat);
-    if (applicable.length === 0) return;
-
-    // pick the latest tempo change at or before targetBeat
-    let latest: [number, number] = applicable[0];
-    for (const item of applicable) {
-      if (item[0] > latest[0]) latest = item;
-    }
-
-    const [beatPos, newBpm] = latest;
-    if (beatPos === this.lastAppliedTempoBeat) return;
+    const newBpm = Array.from(this.bpms.entries()).find(([beat]) => beat >= this.bpmChanged.beat && beat <= targetBeat)?.[1];
+    if (newBpm === undefined) return;
 
     // update bpm and time baseline
+    if (!this.paused) {
+      this.recordBpmChanged();
+    }
     this.bpm = newBpm;
-    this.lastAppliedTempoBeat = beatPos;
-    this.lastBpmChangeBeat = beatPos;
-    this.lastBpmChangeTime = performance.now();
 
     // update UI elements
     const bpmSlider = document.getElementById('bpm-slider') as HTMLInputElement;
@@ -2285,19 +2269,13 @@ class Sequencer {
     this.paused = false;
     this.autoScroll = true;
     this.renderPlayButton();
-    const playbackPosition = document.querySelector('.playback-position') as HTMLElement;
-
-    this.lastBpmChangeTime = performance.now();
-    this.lastBpmChangeBeat = this.currentBeat;    
-
-    // Update Media Session metadata
+    this.recordBpmChanged();
+    // Update Media Session playback state
     if ('mediaSession' in navigator) {
       navigator.mediaSession.playbackState = 'playing';
-      navigator.mediaSession.setPositionState({
-        duration: this.positionToSec(this.getEndOfTrack()),
-        position: this.positionToSec(this.currentBeat)
-      });
     }
+
+    const playbackPosition = document.querySelector('.playback-position') as HTMLElement;
 
     const playRendering = (timeStamp: number) => {
       if (this.paused) return;
@@ -2391,9 +2369,7 @@ class Sequencer {
       this.beats = sequencerData.beats;
       this.instrumentCodes = sequencerData.instrumentCodes;
       this.bpm = sequencerData.bpms.size > 0 ? Array.from(sequencerData.bpms.values())[0] : 120;
-      // Tempo changes map from MIDI import (beat position -> bpm)
       this.bpms = sequencerData.bpms;
-      this.lastAppliedTempoBeat = -1;
       this.gridSize = Math.max(64, sequencerData.gridSize);
       
       // Update UI
