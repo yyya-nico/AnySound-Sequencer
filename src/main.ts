@@ -2306,7 +2306,7 @@ class Sequencer {
       const midiFile = parser.parse();
       
       // Convert MIDI to sequencer format
-      const sequencerData = MidiConverter.midiToSequencer(midiFile, this.bpm);
+      const sequencerData = MidiConverter.midiToSequencer(midiFile);
       
       // Clear existing data
       this.stop();

@@ -478,7 +478,7 @@ export class MidiConverter {
   }
 
   // Convert MIDI format to your sequencer data
-  static midiToSequencer(midiFile: MidiFile, bpm: number = 120): {
+  static midiToSequencer(midiFile: MidiFile): {
     notes: Array<{id: string; track: number; pitch: number; start: number; length: number; velocity: number}>;
     beats: Array<{id: string; track: number; position: number; velocity: number}>;
     bpm: number;
@@ -488,7 +488,7 @@ export class MidiConverter {
     const beats: Array<{id: string; track: number; position: number; velocity: number}> = [];
     
     const ticksPerBeat = midiFile.ticksPerQuarter;
-    let detectedBpm = bpm;
+    let detectedBpm = 120;
     let detectedEndOfTrack = 0;
 
     for (const track of midiFile.tracks) {
@@ -502,7 +502,10 @@ export class MidiConverter {
 
         if (event.type === 'meta' && event.metaType === 0x51 && event.data) {
           // Extract tempo
-          detectedBpm = this.extractBpmFromTempoData(event.data);
+          const bpm = this.extractBpmFromTempoData(event.data);
+          if (detectedBpm === 120 && bpm !== 120) {
+            detectedBpm = bpm;
+          }
         } else if (event.type === 'noteOn' && event.note !== undefined && event.velocity !== undefined && event.velocity > 0) {
           const channel = event.channel || 0;
           
