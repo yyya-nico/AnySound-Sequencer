@@ -475,6 +475,11 @@ header {
 
   #instrument-name {
     display: block;
+    position: absolute;
+    bottom: 10px;
+    left: 0;
+    width: 100%;
+    padding-inline: 10px 36px;
     font-size: 14px;
     text-align: center;
   }
