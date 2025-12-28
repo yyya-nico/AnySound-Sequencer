@@ -347,7 +347,7 @@ class AudioManager {
   }, onProgress?: (processedSamples: number, totalSamples: number) => void): Promise<AudioBuffer> {
     const sampleRate = params.sampleRate || 44100;
     const numChannels = params.numChannels || 2;
-    const durationSeconds = (params.totalBeats * 60) / params.bpm;
+    const durationSeconds = (params.totalBeats * 60) / (params.bpm * params.playbackSpeed);
     const masterGain = 0.7;
 
     const totalSamples = Math.ceil(durationSeconds * sampleRate);
@@ -356,7 +356,7 @@ class AudioManager {
     const outputs: Float32Array[] = [];
     for (let ch = 0; ch < numChannels; ch++) outputs.push(new Float32Array(totalSamples));
 
-    const beatsToSeconds = (beats: number) => this.beatsToSeconds(beats, params.bpm);
+    const beatsToSeconds = (beats: number) => this.beatsToSeconds(beats, params.bpm * params.playbackSpeed);
 
     type NoteInfo = {
       note: Note;
@@ -2508,7 +2508,7 @@ class Sequencer {
       beats: this.beats,
       filenames: this.filenames,
       files: this.files,
-      bpm: this.bpm * this.playbackSpeed,
+      bpm: this.bpm,
       playbackSpeed: this.playbackSpeed,
       totalBeats: endOfTrack,
       sampleRate: 44100,
