@@ -490,7 +490,7 @@ export class MidiConverter {
     const instrumentCodes: {[track: number]: number} = {};
     
     const ticksPerBeat = midiFile.ticksPerQuarter;
-    let detectedBpm = 120;
+    let bpm = 120, bpmConfirmed = false;
     let detectedEndOfTrack = 0;
 
     for (const track of midiFile.tracks) {
@@ -504,12 +504,13 @@ export class MidiConverter {
 
         if (event.type === 'meta' && event.metaType === 0x51 && event.data) {
           // Extract tempo
-          const bpm = this.extractBpmFromTempoData(event.data);
-          if (detectedBpm === 120 && bpm !== 120) {
-            detectedBpm = bpm;
+          if (!bpmConfirmed) {
+            bpm = this.extractBpmFromTempoData(event.data);
           }
         } else if (event.type === 'noteOn' && event.note !== undefined && event.velocity !== undefined && event.velocity > 0) {
           const channel = event.channel || 0;
+
+          bpmConfirmed = true;
           
           if (!activeNotesByChannel.has(channel)) {
             activeNotesByChannel.set(channel, new Map());
@@ -566,7 +567,7 @@ export class MidiConverter {
       }
     }
 
-    return { notes, beats, instrumentCodes, bpm: detectedBpm, gridSize: Math.ceil(detectedEndOfTrack) };
+    return { notes, beats, instrumentCodes, bpm, gridSize: Math.ceil(detectedEndOfTrack) };
   }
 
   private static createTempoData(bpm: number): Uint8Array {
