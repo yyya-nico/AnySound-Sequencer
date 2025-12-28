@@ -340,23 +340,61 @@ class AudioManager {
     filenames: Filenames;
     files: AudioFile[];
     bpm: number;
+    bpms: Map<number, number>; // beat position -> bpm
     playbackSpeed: number;
-    totalBeats: number;
+    duration: number;
     sampleRate?: number;
     numChannels?: number;
   }, onProgress?: (processedSamples: number, totalSamples: number) => void): Promise<AudioBuffer> {
     const sampleRate = params.sampleRate || 44100;
     const numChannels = params.numChannels || 2;
-    const durationSeconds = (params.totalBeats * 60) / (params.bpm * params.playbackSpeed);
     const masterGain = 0.7;
 
-    const totalSamples = Math.ceil(durationSeconds * sampleRate);
+    const totalSamples = Math.ceil(params.duration * sampleRate);
 
     // Prepare output buffers
     const outputs: Float32Array[] = [];
     for (let ch = 0; ch < numChannels; ch++) outputs.push(new Float32Array(totalSamples));
 
-    const beatsToSeconds = (beats: number) => this.beatsToSeconds(beats, params.bpm * params.playbackSpeed);
+    // Convert a beat position to seconds, taking into account tempo changes in params.bpms
+    const bpmEntries = ((): Array<{ beat: number; bpm: number }> => {
+      const entries: Array<{ beat: number; bpm: number }> = [];
+      // Ensure there's an initial entry at beat 0
+      entries.push({ beat: 0, bpm: params.bpm });
+      if (params.bpms && params.bpms.size) {
+        Array.from(params.bpms.entries()).forEach(([beat, bpm]) => {
+          if (beat === 0) {
+            entries[0].bpm = bpm;
+          } else {
+            entries.push({ beat, bpm });
+          }
+        });
+      }
+      entries.sort((a, b) => a.beat - b.beat);
+      return entries;
+    })();
+
+    const beatPosToSeconds = (beatPos: number): number => {
+      if (beatPos <= 0) return 0;
+      let seconds = 0;
+      for (let i = 0; i < bpmEntries.length; i++) {
+        const segStart = bpmEntries[i].beat;
+        const segBpm = bpmEntries[i].bpm;
+        const segEnd = i + 1 < bpmEntries.length ? bpmEntries[i + 1].beat : Infinity;
+        if (beatPos <= segStart) break;
+        const endBeat = Math.min(beatPos, segEnd);
+        const deltaBeats = endBeat - segStart;
+        seconds += (60 / (segBpm * params.playbackSpeed)) * deltaBeats;
+        if (beatPos <= segEnd) break;
+      }
+      return seconds;
+    };
+
+    const beatRangeToSeconds = (startBeat: number, lengthBeats: number) => {
+      const startSec = beatPosToSeconds(startBeat);
+      const endSec = beatPosToSeconds(startBeat + lengthBeats);
+      return Math.max(0, endSec - startSec);
+    };
 
     type NoteInfo = {
       note: Note;
@@ -377,8 +415,9 @@ class AudioManager {
       const filename = params.filenames.melody.get(note.track) || 'sine';
       const sample = this.melodySamples.get(filename)?.get(note.pitch);
       if (!sample) return;
-      const startSample = Math.floor(beatsToSeconds(note.start) * sampleRate);
-      const durationSec = beatsToSeconds(note.length);
+      const startSec = beatPosToSeconds(note.start);
+      const durationSec = beatRangeToSeconds(note.start, note.length);
+      const startSample = Math.floor(startSec * sampleRate);
       const endSample = Math.min(totalSamples, startSample + Math.ceil(durationSec * sampleRate));
       const gain = masterGain * (note.velocity / 127) * 0.5;
 
@@ -408,8 +447,9 @@ class AudioManager {
     params.beats.forEach(beat => {
       const sample = this.beatSamples.get(beat.track);
       if (!sample) return;
-      const startSample = Math.floor(beatsToSeconds(beat.position) * sampleRate);
+      const startSec = beatPosToSeconds(beat.position);
       const durationSec = 0.2;
+      const startSample = Math.floor(startSec * sampleRate);
       const endSample = Math.min(totalSamples, startSample + Math.ceil(durationSec * sampleRate));
       const gain = masterGain * (beat.velocity / 127) * 0.7;
 
@@ -2165,8 +2205,23 @@ class Sequencer {
       .concat(this.beats.map(b => b.position + this.quantization)).reduce((a, b) => Math.max(a, b), 0);
   }
 
-  private positionToSec(beat: number): number {
-    return beat * 60 / (this.bpm * this.playbackSpeed);
+  private calculateDuration(): number {
+    if (this.bpms.size > 0) {
+      // BPM changes exist, calculate duration more accurately
+      const bpms = Array.from(this.bpms.entries());
+      let durationSeconds = 0;
+      for (let i = 0, j = 1; i < bpms.length - 1; i++, j++) {
+        const [beatA, bpmA] = bpms[i], [beatB] = bpms[j];
+        const segmentBeats = beatB - beatA;
+        durationSeconds += (segmentBeats * 60) / (bpmA * this.playbackSpeed);
+      }
+      const [lastBeat, lastBpm] = bpms[bpms.length - 1];
+      const remainingBeats = this.getEndOfTrack() - lastBeat;
+      durationSeconds += (remainingBeats * 60) / (lastBpm * this.playbackSpeed);
+      return durationSeconds;
+    } else {
+      return (this.getEndOfTrack() * 60) / (this.bpm * this.playbackSpeed);
+    }
   }
 
   private recordBpmChanged() {
@@ -2180,9 +2235,10 @@ class Sequencer {
 
     // Update Media Session position state
     if ('mediaSession' in navigator) {
+      const duration = this.calculateDuration();
       navigator.mediaSession.setPositionState({
-        duration: this.positionToSec(this.getEndOfTrack()),
-        position: this.positionToSec(Math.min(this.currentBeat, this.getEndOfTrack()))
+        duration,
+        position: duration * (this.currentBeat / this.getEndOfTrack()),
       });
     }
   }
@@ -2509,8 +2565,9 @@ class Sequencer {
       filenames: this.filenames,
       files: this.files,
       bpm: this.bpm,
+      bpms: this.bpms,
       playbackSpeed: this.playbackSpeed,
-      totalBeats: endOfTrack,
+      duration: this.calculateDuration(),
       sampleRate: 44100,
       numChannels: 2
     }, (processed, total) => {
