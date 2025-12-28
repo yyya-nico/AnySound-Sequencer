@@ -113,6 +113,10 @@ interface Filenames {
   beat2: string | null;
 }
 
+interface InstrumentCodes {
+  [key: number]: number;
+}
+
 interface AudioSample {
   buffer: AudioBuffer | null;
   type: 'sine' | 'file';
@@ -534,6 +538,7 @@ class Sequencer {
     beat1: null,
     beat2: null
   };
+  private instrumentCodes: InstrumentCodes = {};
   private currentTrack: number = 0;
   private bpm: number = 120;
   private playbackSpeed: number = 1; // 0.5x, 1x, 2x
@@ -724,7 +729,7 @@ class Sequencer {
 
       removeSoundBtn.addEventListener('click', async () => {
         const filename = soundSelect.value;
-        if (filename === 'sine' || filename === 'add-sound') return;
+        if (filename === 'sine') return;
         if (filename && confirm(i18next.t('confirm_remove_sound_file', { filename: filenameToName(filename) }))) {
           this.removeAudioFile(filename);
         }
@@ -1028,7 +1033,7 @@ class Sequencer {
   }
 
   private removeAudioFile(filename: string) {
-    if (filename === 'sine' || filename === 'add-sound') return;
+    if (filename === 'sine') return;
     const soundSelects = document.querySelectorAll('.sound-select') as NodeListOf<HTMLSelectElement>;
     soundSelects.forEach(soundSelect => {
       // 指定のオプションを削除
@@ -1522,6 +1527,7 @@ class Sequencer {
     const savedQuantization = await localForage.getItem<number>('quantization');
     const savedAudioFiles = await localForage.getItem<AudioFile[]>('audioFiles');
     const savedAudioFilenames = await localForage.getItem<Filenames>('audioFilenames');
+    const savedInstrumentCodes = await localForage.getItem<InstrumentCodes>('instrumentCodes');
     const savedGridSize = await localForage.getItem<number>('gridSize');
 
     if (savedGridSize) {
@@ -1537,7 +1543,7 @@ class Sequencer {
 
     if (savedNotes) {
       this.notes = savedNotes;
-      // Render notes (will be re-rendered in renderCurrentTrack)
+      // Render notes (will be re-rendered in renderTracks)
     }
 
     if (savedBeats) {
@@ -1569,6 +1575,16 @@ class Sequencer {
       this.beats.forEach(beat => this.renderBeat(beat));
       const quantizationSelect = document.getElementById('quantization-select') as HTMLSelectElement;
       if (quantizationSelect) quantizationSelect.value = this.quantization.toString();
+    }
+
+    if (savedInstrumentCodes) {
+      this.instrumentCodes = savedInstrumentCodes;
+      const instrumentNameOutput = document.getElementById('instrument-name') as HTMLOutputElement;
+      if (instrumentNameOutput) {
+        const currentInstrumentCode = this.instrumentCodes[this.currentTrack] || -1;
+        instrumentNameOutput.dataset.gmNum = currentInstrumentCode.toString();
+        instrumentNameOutput.value = this.gmInstrumentCodeToName(currentInstrumentCode);
+      }
     }
 
     if (savedAudioFiles) {
@@ -1697,6 +1713,7 @@ class Sequencer {
     localForage.setItem('quantization', this.quantization);
     localForage.setItem('audioFiles', this.files);
     localForage.setItem('audioFilenames', this.filenames);
+    localForage.setItem('instrumentCodes', this.instrumentCodes);
     localForage.setItem('gridSize', this.gridSize);
   }
 
@@ -1718,6 +1735,7 @@ class Sequencer {
     const soundSelectLabel = melodySoundButtonsContainer.querySelector('.sound-select-label') as HTMLElement;
     const soundSelect = melodySoundButtonsContainer.querySelector('.sound-select') as HTMLSelectElement;
     const pitchShiftLabel = document.querySelector('.pitch-shift-label') as HTMLElement;
+    const instrumentNameOutput = document.getElementById('instrument-name') as HTMLOutputElement;
 
     const filename = this.filenames.melody.get(this.currentTrack) || 'sine';
     const isSine = filename === 'sine';
@@ -1733,6 +1751,9 @@ class Sequencer {
       const pitchShiftInput = document.getElementById('melody-pitch-shift') as HTMLInputElement;
       if (pitchShiftInput) pitchShiftInput.valueAsNumber = audioFile.pitchShift;
     }
+    const instrumentCode = this.instrumentCodes[this.currentTrack] || -1;
+    instrumentNameOutput.dataset.gmNum = instrumentCode.toString();
+    instrumentNameOutput.value = this.gmInstrumentCodeToName(instrumentCode);
     
     // Clear selected notes when switching tracks
     this.selectedNotes.clear();
@@ -1837,6 +1858,7 @@ class Sequencer {
     this.beats = [];
     this.bpm = 120;
     this.playbackSpeed = 1;
+    this.instrumentCodes = {};
     this.gridSize = 64;
 
     // Clear UI
@@ -1850,6 +1872,11 @@ class Sequencer {
     document.querySelectorAll('.beat').forEach(beat => beat.remove());
     this.createBeats();
     this.beats.forEach(beat => this.renderBeat(beat));
+    const instrumentNameOutput = document.getElementById('instrument-name') as HTMLOutputElement;
+    if (instrumentNameOutput) {
+      instrumentNameOutput.dataset.gmNum = '-1';
+      instrumentNameOutput.value = this.gmInstrumentCodeToName(-1);
+    }
     const bpmSlider = document.getElementById('bpm-slider') as HTMLInputElement;
     const bpmValue = document.getElementById('bpm-value') as HTMLInputElement;
     if (bpmSlider) bpmSlider.valueAsNumber = this.bpm;
@@ -2176,6 +2203,13 @@ class Sequencer {
       return currentBeat;
   }
 
+  private gmInstrumentCodeToName(instrumentCode: number): string {
+    if (instrumentCode < 0 || instrumentCode > 127) {
+      return '';
+    }
+    return i18next.t(`general_midi.${String(instrumentCode).padStart(3, '0')}`);
+  }
+
   private playNotes(currentBeat: number) {
     this.notes.forEach(note => {
       const noteIntersected = note.start <= currentBeat && note.start + note.length >= currentBeat;
@@ -2316,15 +2350,22 @@ class Sequencer {
       // Load converted data
       this.notes = sequencerData.notes;
       this.beats = sequencerData.beats;
+      this.instrumentCodes = sequencerData.instrumentCodes;
       this.bpm = sequencerData.bpm;
       this.gridSize = Math.max(64, sequencerData.gridSize);
       
       // Update UI
       const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
+      const instrumentNameOutput = document.getElementById('instrument-name') as HTMLOutputElement;
       const bpmSlider = document.getElementById('bpm-slider') as HTMLInputElement;
       const bpmValue = document.getElementById('bpm-value') as HTMLInputElement;
       if (sequencerContainer) {
         sequencerContainer.style.setProperty('--grid-size', this.gridSize.toString());
+      }
+      if (instrumentNameOutput) {
+        const instrumentCode = this.instrumentCodes[this.currentTrack] || -1;
+        instrumentNameOutput.dataset.gmNum = instrumentCode.toString();
+        instrumentNameOutput.value = this.gmInstrumentCodeToName(instrumentCode);
       }
       if (bpmSlider) bpmSlider.valueAsNumber = this.bpm;
       if (bpmValue) bpmValue.valueAsNumber = this.bpm;

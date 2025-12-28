@@ -481,11 +481,13 @@ export class MidiConverter {
   static midiToSequencer(midiFile: MidiFile): {
     notes: Array<{id: string; track: number; pitch: number; start: number; length: number; velocity: number}>;
     beats: Array<{id: string; track: number; position: number; velocity: number}>;
+    instrumentCodes: {[track: number]: number};
     bpm: number;
     gridSize: number;
   } {
     const notes: Array<{id: string; track: number; pitch: number; start: number; length: number; velocity: number}> = [];
     const beats: Array<{id: string; track: number; position: number; velocity: number}> = [];
+    const instrumentCodes: {[track: number]: number} = {};
     
     const ticksPerBeat = midiFile.ticksPerQuarter;
     let detectedBpm = 120;
@@ -550,6 +552,11 @@ export class MidiConverter {
               channelNotes.delete(event.note);
             }
           }
+        } else if (event.type === 'programChange' && typeof event.program === 'number') {
+          const channel = event.channel || 0;
+          if (channel !== 9 && !instrumentCodes[channel]) { // Ignore percussion channel
+            instrumentCodes[channel] = event.program;
+          }
         } else if (event.type === 'meta' && event.metaType === 0x2F) {
           // End of track
           if (currentBeats > detectedEndOfTrack) {
@@ -559,7 +566,7 @@ export class MidiConverter {
       }
     }
 
-    return { notes, beats, bpm: detectedBpm, gridSize: Math.ceil(detectedEndOfTrack) };
+    return { notes, beats, instrumentCodes, bpm: detectedBpm, gridSize: Math.ceil(detectedEndOfTrack) };
   }
 
   private static createTempoData(bpm: number): Uint8Array {
