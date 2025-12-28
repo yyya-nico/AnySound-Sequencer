@@ -541,6 +541,7 @@ class Sequencer {
   private instrumentCodes: InstrumentCodes = {};
   private currentTrack: number = 0;
   private bpm: number = 120;
+  private bpms: Map<number, number> = new Map(); // beat position -> bpm
   private playbackSpeed: number = 1; // 0.5x, 1x, 2x
   private quantization: number = 0.5; // in beats
   private defaultNoteLength: number = 1;
@@ -551,6 +552,7 @@ class Sequencer {
   private saveTimeout: number | null = null;
   private lastBpmChangeTime: number = 0;
   private lastBpmChangeBeat: number = 0;
+  private lastAppliedTempoBeat: number = -1;
   private currentBeat: number = 0;
   private playedNotes: Set<string> = new Set();
   private pointerDowned: boolean = false;
@@ -1523,6 +1525,7 @@ class Sequencer {
     const savedNotes = await localForage.getItem<Note[]>('notes');
     const savedBeats = await localForage.getItem<Beat[]>('beats');
     const savedBpm = await localForage.getItem<number>('bpm');
+    const savedBpms = await localForage.getItem<Map<number, number>>('bpms');
     const savedPlaybackSpeed = await localForage.getItem<number>('playbackSpeed');
     const savedQuantization = await localForage.getItem<number>('quantization');
     const savedAudioFiles = await localForage.getItem<AudioFile[]>('audioFiles');
@@ -1560,6 +1563,10 @@ class Sequencer {
       const bpmValue = document.getElementById('bpm-value') as HTMLInputElement;
       if (bpmSlider) bpmSlider.valueAsNumber = this.bpm;
       if (bpmValue) bpmValue.valueAsNumber = this.bpm;
+    }
+
+    if (savedBpms) {
+      this.bpms = savedBpms;
     }
 
     if (savedPlaybackSpeed) {
@@ -1709,6 +1716,7 @@ class Sequencer {
     localForage.setItem('notes', this.notes);
     localForage.setItem('beats', this.beats);
     localForage.setItem('bpm', this.bpm);
+    localForage.setItem('bpms', this.bpms);
     localForage.setItem('playbackSpeed', this.playbackSpeed);
     localForage.setItem('quantization', this.quantization);
     localForage.setItem('audioFiles', this.files);
@@ -1857,6 +1865,8 @@ class Sequencer {
     this.notes = [];
     this.beats = [];
     this.bpm = 120;
+    this.bpms = new Map();
+    this.lastAppliedTempoBeat = -1;
     this.playbackSpeed = 1;
     this.instrumentCodes = {};
     this.gridSize = 64;
@@ -2203,6 +2213,34 @@ class Sequencer {
       return currentBeat;
   }
 
+  private applyTempoChangesUpTo(targetBeat: number) {
+    if (!this.bpms || this.bpms.size === 0) return;
+
+    const applicable = Array.from(this.bpms.entries()).filter(([beat]) => beat <= targetBeat);
+    if (applicable.length === 0) return;
+
+    // pick the latest tempo change at or before targetBeat
+    let latest: [number, number] = applicable[0];
+    for (const item of applicable) {
+      if (item[0] > latest[0]) latest = item;
+    }
+
+    const [beatPos, newBpm] = latest;
+    if (beatPos === this.lastAppliedTempoBeat) return;
+
+    // update bpm and time baseline
+    this.bpm = newBpm;
+    this.lastAppliedTempoBeat = beatPos;
+    this.lastBpmChangeBeat = beatPos;
+    this.lastBpmChangeTime = performance.now();
+
+    // update UI elements
+    const bpmSlider = document.getElementById('bpm-slider') as HTMLInputElement;
+    const bpmValue = document.getElementById('bpm-value') as HTMLInputElement;
+    if (bpmSlider) bpmSlider.valueAsNumber = this.bpm;
+    if (bpmValue) bpmValue.valueAsNumber = this.bpm;
+  }
+
   private gmInstrumentCodeToName(instrumentCode: number): string {
     if (instrumentCode < 0 || instrumentCode > 127) {
       return '';
@@ -2281,6 +2319,8 @@ class Sequencer {
       if (this.paused) return;
       setTimeout(playLoop, 1);
       this.currentBeat = this.getCurrentBeat();
+      // Apply tempo changes that should take effect up to current beat
+      this.applyTempoChangesUpTo(this.currentBeat);
       this.playNotes(this.currentBeat);
       if (this.currentBeat >= this.getEndOfTrack()) {
         const loopToggle = document.getElementById('loop-toggle') as HTMLInputElement;
@@ -2351,7 +2391,10 @@ class Sequencer {
       this.notes = sequencerData.notes;
       this.beats = sequencerData.beats;
       this.instrumentCodes = sequencerData.instrumentCodes;
-      this.bpm = sequencerData.bpm;
+      this.bpm = sequencerData.bpms.size > 0 ? Array.from(sequencerData.bpms.values())[0] : 120;
+      // Tempo changes map from MIDI import (beat position -> bpm)
+      this.bpms = sequencerData.bpms;
+      this.lastAppliedTempoBeat = -1;
       this.gridSize = Math.max(64, sequencerData.gridSize);
       
       // Update UI

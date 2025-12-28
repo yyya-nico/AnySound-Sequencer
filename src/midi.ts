@@ -483,7 +483,7 @@ export class MidiConverter {
     notes: Array<{id: string; track: number; pitch: number; start: number; length: number; velocity: number}>;
     beats: Array<{id: string; track: number; position: number; velocity: number}>;
     instrumentCodes: {[track: number]: number};
-    bpm: number;
+    bpms: Map<number, number>;
     gridSize: number;
   } {
     const notes: Array<{id: string; track: number; pitch: number; start: number; length: number; velocity: number}> = [];
@@ -491,7 +491,7 @@ export class MidiConverter {
     const instrumentCodes: {[track: number]: number} = {};
     
     const ticksPerBeat = midiFile.ticksPerQuarter;
-    let bpm = 120, bpmConfirmed = false;
+    const bpms: Map<number, number> = new Map();
     let detectedEndOfTrack = 0;
 
     for (const track of midiFile.tracks) {
@@ -504,15 +504,11 @@ export class MidiConverter {
         const currentBeats = currentTicks / ticksPerBeat;
 
         if (event.type === 'meta' && event.metaType === 0x51 && event.data) {
-          // Extract tempo
-          if (!bpmConfirmed) {
-            bpm = this.extractBpmFromTempoData(event.data);
-          }
+          // Record tempo change at this beat position
+          const extracted = this.extractBpmFromTempoData(event.data);
+          bpms.set(currentBeats, extracted);
         } else if (event.type === 'noteOn' && event.note !== undefined && event.velocity !== undefined && event.velocity > 0) {
           const channel = event.channel || 0;
-
-          bpmConfirmed = true;
-          
           if (!activeNotesByChannel.has(channel)) {
             activeNotesByChannel.set(channel, new Map());
           }
@@ -568,7 +564,7 @@ export class MidiConverter {
       }
     }
 
-    return { notes, beats, instrumentCodes, bpm, gridSize: Math.ceil(detectedEndOfTrack) };
+    return { notes, beats, instrumentCodes, bpms, gridSize: Math.ceil(detectedEndOfTrack) };
   }
 
   private static createTempoData(bpm: number): Uint8Array {
