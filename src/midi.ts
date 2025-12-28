@@ -3,7 +3,7 @@
 
 interface MidiEvent {
   deltaTime: number;
-  type: 'noteOn' | 'noteOff' | 'meta' | 'sysex' | 'controller' | 'programChange';
+  type: 'noteOn' | 'noteOff' | 'meta' | 'sysex' | 'controller' | 'programChange' | 'unknown';
   channel?: number;
   note?: number;
   velocity?: number;
@@ -159,7 +159,8 @@ export class MidiParser {
       } else {
         // Skip unknown events
         console.warn(`Unknown MIDI event: 0x${status.toString(16)}`);
-        break;
+        event.type = 'unknown';
+        pos++;
       }
       
       track.events.push(event);
