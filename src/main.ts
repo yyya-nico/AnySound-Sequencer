@@ -2194,6 +2194,7 @@ class Sequencer {
     this.lastBpmChangeBeat = 0;
     this.currentBeat = 0;
     this.playedNotes.clear();
+    this.autoScroll = true;
     const rolls = document.querySelector('.rolls') as HTMLElement;
     const playbackPosition = document.querySelector('.playback-position') as HTMLElement;
     rolls.scrollTo({ left: 0 });
@@ -2309,8 +2310,6 @@ class Sequencer {
 
       if (this.autoScroll) {
         playbackPosition.scrollIntoView({ block: 'nearest', inline: 'center' });
-      } else if (this.currentBeat <= 0.2) {
-        this.autoScroll = true;
       }
     };
     requestAnimationFrame(playRendering);
