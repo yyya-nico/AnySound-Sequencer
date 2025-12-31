@@ -920,6 +920,7 @@ class Sequencer {
         const newBeat = newPosition / Sequencer.noteWidth;
         this.currentBeat = newBeat;
         
+        this.applyTempoChangesUpTo(this.currentBeat);
         this.playNotes(this.currentBeat);
 
         this.scrollByDragging(e, true);
@@ -2277,8 +2278,8 @@ class Sequencer {
   private applyTempoChangesUpTo(targetBeat: number) {
     if (!this.bpms || this.bpms.size === 0) return;
 
-    const newBpm = Array.from(this.bpms.entries()).find(([beat]) => beat >= this.bpmChanged.beat && beat <= targetBeat)?.[1];
-    if (newBpm === undefined) return;
+    const newBpm = Array.from(this.bpms.entries()).findLast(([beat]) => beat <= targetBeat)?.[1];
+    if (newBpm === undefined || newBpm === this.bpm) return;
 
     // update bpm and time baseline
     if (!this.paused) {
