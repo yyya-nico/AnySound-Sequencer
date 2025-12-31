@@ -841,10 +841,16 @@ class Sequencer {
     document.getElementById('app')!.style.setProperty('--scrollbar-width', `${rolls.offsetHeight - rolls.clientHeight}px`);
     rolls.scrollTop = Sequencer.noteHeight * (12 * 2 + 2); // 2 octaves + extra space
     let beforeScrollLeft = 0, beforeScrollTop = rolls.scrollTop;
-    ['pointerdown', 'wheel'].forEach(eventName => {
-      rolls.addEventListener(eventName, () => {
-        this.autoScroll = false;
-      });
+    rolls.addEventListener('pointerdown', () => {
+      this.autoScroll = false;
+    });
+    let moveStrage = 0;
+    rolls.addEventListener('wheel', (e) => {
+      if (!this.autoScroll) return;
+      moveStrage += e.deltaX;
+      if (Math.abs(moveStrage) < 20) return;
+      this.autoScroll = false;
+      moveStrage = 0;
     });
     rolls.addEventListener('scroll', (e) => {
       const target = e.target as HTMLElement;
