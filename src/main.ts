@@ -845,10 +845,6 @@ class Sequencer {
     rolls.addEventListener('pointerdown', () => {
       this.pointerDowned = true;
     });
-    rolls.addEventListener('pointerup', (e) => {
-      if (!e.isPrimary || e.button !== 0) return;
-      this.pointerDowned = false;
-    });
     rolls.addEventListener('scroll', (e) => {
       if (this.pointerDowned) {
         this.autoScroll = false;
@@ -870,7 +866,7 @@ class Sequencer {
     let beforePaused = true;
 
     playbackPosition.addEventListener('pointerenter', () => {
-      playbackPosition.classList.add('hover');
+      // playbackPosition.classList.add('hover');
     });
 
     playbackPosition.addEventListener('pointerleave', () => {
@@ -897,6 +893,8 @@ class Sequencer {
 
     playbackPosition.addEventListener('pointerdown', (e) => {
       if (!e.isPrimary || e.button !== 0) return; // 左クリックのみ
+      const target = e.target as HTMLElement;
+      target.setPointerCapture(e.pointerId);
       beforePaused = this.paused;
       if (!this.paused) this.pause();
       playbackDragging = true;
@@ -904,34 +902,28 @@ class Sequencer {
       const pianoRollRect = pianoRollSection.getBoundingClientRect();
       initialRelativeX = e.clientX - pianoRollRect.left; // pianoRoll内での相対X座標
       beforePos = parseFloat(playbackPosition.style.getPropertyValue('--position')) || 0;
-      rolls.classList.add('playback-drag');
     });
+    playbackPosition.addEventListener('pointermove', (e) => {
+      if (!playbackDragging) return;
+      
+      const pianoRollRect = pianoRollSection.getBoundingClientRect();
+      const currentRelativeX = e.clientX - pianoRollRect.left;
+      const deltaX = currentRelativeX - initialRelativeX;
+      
+      const newPosition = minmax(beforePos + deltaX, 0, this.gridSize * Sequencer.noteWidth);
+      playbackPosition.style.setProperty('--position', `${newPosition}px`);
+      const newBeat = newPosition / Sequencer.noteWidth;
+      this.currentBeat = newBeat;
+      
+      this.applyTempoChangesUpTo(this.currentBeat);
+      this.playNotes(this.currentBeat);
 
-    [playbackPosition, rolls].forEach(element => {
-      element.addEventListener('pointermove', (e) => {
-        if (!playbackDragging) return;
-        
-        const pianoRollRect = pianoRollSection.getBoundingClientRect();
-        const currentRelativeX = e.clientX - pianoRollRect.left;
-        const deltaX = currentRelativeX - initialRelativeX;
-        
-        const newPosition = minmax(beforePos + deltaX, 0, this.gridSize * Sequencer.noteWidth);
-        playbackPosition.style.setProperty('--position', `${newPosition}px`);
-        const newBeat = newPosition / Sequencer.noteWidth;
-        this.currentBeat = newBeat;
-        
-        this.applyTempoChangesUpTo(this.currentBeat);
-        this.playNotes(this.currentBeat);
-
-        this.scrollByDragging(e, true);
-      });
+      this.scrollByDragging(e, true);
     });
-    document.addEventListener('pointerup', (e) => {
+    playbackPosition.addEventListener('pointerup', (e) => {
       if (!playbackDragging || !e.isPrimary || e.button !== 0) return;
       if (!beforePaused) this.play();
       playbackDragging = false;
-      playbackPosition.classList.remove('hover');
-      rolls.classList.remove('playback-drag');
     });
 
     document.getElementById('clear-sounds-btn')?.addEventListener('click', () => {
@@ -1281,6 +1273,8 @@ class Sequencer {
           return;
         }
       }
+      const target = e.target as HTMLElement;
+      target.setPointerCapture(e.pointerId);
       
       // Ctrlキーが押されている場合は矩形選択開始
       if (e.ctrlKey || e.metaKey) {
@@ -1288,7 +1282,6 @@ class Sequencer {
         return;
       }
       
-      const target = e.target as HTMLElement;
       const isNote = target.classList.contains('note');
       const isCurrentNote = target.dataset.track === String(this.currentTrack);
       
@@ -1296,6 +1289,7 @@ class Sequencer {
       if (isNote && !isCurrentNote) {
         return;
       }
+      target.classList.add('dragging');
 
       const trackNotes = this.getCurrentTrackNotes();
       
@@ -1349,7 +1343,7 @@ class Sequencer {
       }
     });
 
-    document.addEventListener('pointerup', (e) => {
+    pianoRoll.addEventListener('pointerup', (e) => {
       if (!e.isPrimary || e.button !== 0) return; // 左クリックのみ
       if ((e as PointerEvent).pointerType === 'touch') {
         if (!this.paused) return;
@@ -1366,6 +1360,8 @@ class Sequencer {
           return; // マルチタッチ中の移動は無視
         }
       }
+      const target = e.target as HTMLElement;
+      target.classList.remove('dragging');
       
       if (this.isRectangleSelecting) {
         this.endRectangleSelection(pianoRoll);
@@ -1404,6 +1400,7 @@ class Sequencer {
     section.addEventListener('pointerdown', (e: PointerEvent) => {
       if (!e.isPrimary || e.button !== 0) return; // 左クリックのみ
       const target = e.target as HTMLElement;
+      target.setPointerCapture(e.pointerId);
       if (target.classList.contains('beat')) {
         const position = parseFloat(target.dataset.position!);
         const track = parseInt(target.dataset.track!);
@@ -1440,78 +1437,57 @@ class Sequencer {
 
   private setupNoteDragResize() {
     let note: Note | null = null;
-    let isResizable = false;
-    let isResizing = false;
-    let currentNote: HTMLElement | null = null;
+    let noteElem: HTMLElement | null = null;
     let startX = 0;
     let originalWidth = 0;
 
-    const pianoRoll = document.querySelector('.piano-roll-grid');
+    const pianoRoll = document.querySelector('.piano-roll-grid') as HTMLElement;
     if (!pianoRoll) return;
 
-    pianoRoll.addEventListener('pointerdown', (e: Event) => {
-      const pointerEvent = e as PointerEvent;
+    pianoRoll.addEventListener('pointerdown', (e: PointerEvent) => {
       const target = e.target as HTMLElement;
       const isNote = target.classList.contains('note');
       const isCurrentNote = target.dataset.track === String(this.currentTrack);
       if (isNote && isCurrentNote) {
         // Check if clicking near the right edge for resizing
-        isResizing = isResizable;
-        if (isResizing) {
-          currentNote = target;
-          startX = pointerEvent.clientX;
-          originalWidth = target.offsetWidth;
+        const rect = target.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const isResizable = x > rect.width - 5;
+        if (isResizable) {
+          const noteId = target.dataset.noteId!;
+          const trackNotes = this.getCurrentTrackNotes();
+          note = trackNotes.find(n => n.id === noteId) || null;
+          noteElem = target;
+          noteElem.setPointerCapture(e.pointerId);
+          noteElem.classList.add('resizing');
+          startX = e.clientX;
+          originalWidth = noteElem.offsetWidth;
           e.preventDefault();
         }
       }
     });
 
-    document.addEventListener('pointermove', (e: Event) => {
-      const pointerEvent = e as PointerEvent;
-      const target = e.target as HTMLElement;
-      const isNote = target.classList.contains('note');
-      const isCurrentNote = target.dataset.track === String(this.currentTrack);
-      if (isNote && isCurrentNote) {
-        const rect = target.getBoundingClientRect();
-        const x = pointerEvent.clientX - rect.left;
-
-        isResizable = x > rect.width - 5;
-      } else {
-        isResizable = false;
-      }
-      if (isResizing) {
-        pianoRoll.classList.add('note-resize');
-      } else {
-        pianoRoll.classList.remove('note-resize');
-      }
-      if (isResizing && currentNote) {
-        const deltaX = pointerEvent.clientX - startX;
+    pianoRoll.addEventListener('pointermove', (e: PointerEvent) => {
+      if (note && noteElem) {
+        const deltaX = e.clientX - startX;
         let newNoteValue = null;
         if (this.quantization < 0) {
           newNoteValue = Math.max(0.1, (originalWidth + deltaX) / Sequencer.noteWidth);
         } else {
           newNoteValue = Math.max(this.quantization, multipleFloor((originalWidth + deltaX) / Sequencer.noteWidth, this.quantization));
         }
-        currentNote.style.setProperty('--length', newNoteValue.toString());
-
-        // Update note data
-        const noteId = currentNote.dataset.noteId!;
-        const trackNotes = this.getCurrentTrackNotes();
-        note = trackNotes.find(n => n.id === noteId) || null;
-        if (note) {
-          note.length = newNoteValue;
-          this.updateNoteMeta(currentNote, note);
-        }
+        note.length = newNoteValue;
+        this.updateNoteMeta(noteElem, note);
       }
     });
 
-    document.addEventListener('pointerup', () => {
-      if (isResizing && note) {
+    pianoRoll.addEventListener('pointerup', () => {
+      if (note && noteElem) {
         this.defaultNoteLength = note.length;
+        noteElem.classList.remove('resizing');
+        note = null;
+        noteElem = null;
       }
-      note = null;
-      isResizing = false;
-      currentNote = null;
     });
   }
 
@@ -1538,13 +1514,9 @@ class Sequencer {
       beforeY = e.clientY;
     });
 
-    let captured = false;
     trackSelector.addEventListener('pointermove', (e: PointerEvent) => {
       if (!isPointerDown) return;
-      if (!captured) {
-        trackSelector.setPointerCapture(e.pointerId);
-        captured = true;
-      }
+      trackSelector.setPointerCapture(e.pointerId);
       const y = e.clientY;
       const distance = beforeY - y;
 
@@ -1558,8 +1530,6 @@ class Sequencer {
     trackSelector.addEventListener('pointerup', (e: PointerEvent) => {
       if (!e.isPrimary || e.button !== 0) return; // 左クリックのみ
       isPointerDown = false;
-      trackSelector.releasePointerCapture(e.pointerId);
-      captured = false;
     });
 
     trackSelector.addEventListener('pointerleave', () => {

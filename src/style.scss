@@ -517,10 +517,6 @@ header {
   position: relative;
   overflow: auto;
 
-  &.playback-drag {
-    cursor: col-resize;
-  }
-
   @include small-width() {
     grid-template-rows: auto 150px;
   }
@@ -556,7 +552,7 @@ header {
     transition: inherit;
   }
 
-  &.hover {
+  &:hover {
     width: 4px;
     margin-inline: -2px;
     background: #afafaf;
@@ -616,23 +612,6 @@ header {
   width: calc(var(--width-per-note) * var(--grid-size));
   height: calc(var(--height-per-note) * var(--grid-keys));
   background: #1e1e1e;
-
-  &.note-dragging {
-    cursor: move;
-
-    .note {
-      cursor: inherit;
-      opacity: 0.6;
-    }
-  }
-
-  &.note-resize {
-    cursor: ew-resize;
-
-    .note {
-      cursor: inherit;
-    }
-  }
 }
 
 #track-selector {
@@ -990,6 +969,15 @@ header {
     &::after {
       display: none;
     }
+  }
+
+  &.dragging {
+    cursor: move;
+    opacity: 0.6;
+  }
+
+  &.resizing {
+    cursor: ew-resize;
   }
 
   // opacity variables
