@@ -1505,11 +1505,11 @@ class Sequencer {
   }
 
   private setupTrackScrolling() {
-    const melodyTrackList = document.getElementById('track-selector');
-    if (!melodyTrackList) return;
+    const trackSelector = document.getElementById('track-selector');
+    if (!trackSelector) return;
 
     let moveStrage = 0;
-    melodyTrackList.addEventListener('wheel', (e: WheelEvent) => {
+    trackSelector.addEventListener('wheel', (e: WheelEvent) => {
       e.preventDefault();
       moveStrage += e.deltaY;
       if (Math.abs(moveStrage) < 20) return;
@@ -1520,17 +1520,18 @@ class Sequencer {
 
     let isPointerDown = false;
     let beforeY = 0;
-    melodyTrackList.addEventListener('pointerdown', (e: PointerEvent) => {
+    trackSelector.addEventListener('pointerdown', (e: PointerEvent) => {
       if (!e.isPrimary || e.button !== 0) return; // 左クリックのみ
+      e.stopPropagation();
       isPointerDown = true;
       beforeY = e.clientY;
     });
 
     let captured = false;
-    melodyTrackList.addEventListener('pointermove', (e: PointerEvent) => {
+    trackSelector.addEventListener('pointermove', (e: PointerEvent) => {
       if (!isPointerDown) return;
       if (!captured) {
-        melodyTrackList.setPointerCapture(e.pointerId);
+        trackSelector.setPointerCapture(e.pointerId);
         captured = true;
       }
       const y = e.clientY;
@@ -1543,14 +1544,14 @@ class Sequencer {
       }
     });
 
-    melodyTrackList.addEventListener('pointerup', (e: PointerEvent) => {
+    trackSelector.addEventListener('pointerup', (e: PointerEvent) => {
       if (!e.isPrimary || e.button !== 0) return; // 左クリックのみ
       isPointerDown = false;
-      melodyTrackList.releasePointerCapture(e.pointerId);
+      trackSelector.releasePointerCapture(e.pointerId);
       captured = false;
     });
 
-    melodyTrackList.addEventListener('pointerleave', () => {
+    trackSelector.addEventListener('pointerleave', () => {
       isPointerDown = false;
     });
   }
