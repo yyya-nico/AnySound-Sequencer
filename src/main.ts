@@ -647,7 +647,7 @@ class Sequencer {
 
     const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
     sequencerContainer.addEventListener('touchmove', (e) => {
-      if (!this.multiTouched) { // 1本目の指は無視
+      if (this.paused && !this.multiTouched) { // 停止中の1本指操作は無視(スクロールさせない)
         e.preventDefault();
       }
     }, { passive: false });
@@ -1275,7 +1275,11 @@ class Sequencer {
 
     pianoRoll.addEventListener('pointerdown', (e) => {
       if (!e.isPrimary || e.button !== 0) return; // 左クリックのみ
-      if ((e as PointerEvent).pointerType === 'touch' && this.multiTouched) return; // 2本以上の指ならノート操作を無視
+      if ((e as PointerEvent).pointerType === 'touch') {
+        if (this.multiTouched || !this.paused) {
+          return;
+        }
+      }
       
       // Ctrlキーが押されている場合は矩形選択開始
       if (e.ctrlKey || e.metaKey) {
@@ -1321,17 +1325,20 @@ class Sequencer {
 
     pianoRoll.addEventListener('pointermove', (e) => {
       if (!e.isPrimary || e.buttons !== 1) return; // 左クリックのみ
-      if ((e as PointerEvent).pointerType === 'touch' && this.multiTouched) {
-        const noteId = currentNote?.id || null;
-        if (noteId) {
-          this.removeNote(noteId);
-          currentNote = null;
+      if ((e as PointerEvent).pointerType === 'touch') {
+        if (!this.paused) return;
+        if (this.multiTouched) {
+          const noteId = currentNote?.id || null;
+          if (noteId) {
+            this.removeNote(noteId);
+            currentNote = null;
+          }
+          if (currentPreviewId) {
+            this.audioManager.stopPreview(currentPreviewId);
+            currentPreviewId = null;
+          }
+          return; // マルチタッチ中の移動は無視
         }
-        if (currentPreviewId) {
-          this.audioManager.stopPreview(currentPreviewId);
-          currentPreviewId = null;
-        }
-        return; // マルチタッチ中の移動は無視
       }
       
       if (this.isRectangleSelecting) {
@@ -1343,17 +1350,20 @@ class Sequencer {
 
     document.addEventListener('pointerup', (e) => {
       if (!e.isPrimary || e.button !== 0) return; // 左クリックのみ
-      if ((e as PointerEvent).pointerType === 'touch' && this.multiTouched) {
-        const noteId = currentNote?.id || null;
-        if (noteId) {
-          this.removeNote(noteId);
-          currentNote = null;
+      if ((e as PointerEvent).pointerType === 'touch') {
+        if (!this.paused) return;
+        if (this.multiTouched) {
+          const noteId = currentNote?.id || null;
+          if (noteId) {
+            this.removeNote(noteId);
+            currentNote = null;
+          }
+          if (currentPreviewId) {
+            this.audioManager.stopPreview(currentPreviewId);
+            currentPreviewId = null;
+          }
+          return; // マルチタッチ中の移動は無視
         }
-        if (currentPreviewId) {
-          this.audioManager.stopPreview(currentPreviewId);
-          currentPreviewId = null;
-        }
-        return; // マルチタッチ中の移動は無視
       }
       
       if (this.isRectangleSelecting) {
