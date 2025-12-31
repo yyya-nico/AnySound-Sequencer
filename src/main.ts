@@ -596,7 +596,6 @@ class Sequencer {
   };
   private currentBeat: number = 0;
   private playedNotes: Set<string> = new Set();
-  private pointerDowned: boolean = false;
   private autoScroll: boolean = true;
   private selectedNotes: Set<string> = new Set();
   private isRectangleSelecting: boolean = false;
@@ -842,13 +841,12 @@ class Sequencer {
     document.getElementById('app')!.style.setProperty('--scrollbar-width', `${rolls.offsetHeight - rolls.clientHeight}px`);
     rolls.scrollTop = Sequencer.noteHeight * (12 * 2 + 2); // 2 octaves + extra space
     let beforeScrollLeft = 0, beforeScrollTop = rolls.scrollTop;
-    rolls.addEventListener('pointerdown', () => {
-      this.pointerDowned = true;
+    ['pointerdown', 'wheel'].forEach(eventName => {
+      rolls.addEventListener(eventName, () => {
+        this.autoScroll = false;
+      });
     });
     rolls.addEventListener('scroll', (e) => {
-      if (this.pointerDowned) {
-        this.autoScroll = false;
-      }
       const target = e.target as HTMLElement;
       const scrollLeft = target.scrollLeft;
       const scrollTop = target.scrollTop;
