@@ -868,15 +868,6 @@ class Sequencer {
     let beforePos = 0;
     let initialRelativeX = 0;
     let beforePaused = true;
-
-    playbackPosition.addEventListener('pointerenter', () => {
-      // playbackPosition.classList.add('hover');
-    });
-
-    playbackPosition.addEventListener('pointerleave', () => {
-      if (playbackDragging) return;
-      playbackPosition.classList.remove('hover');
-    });
     
     const pianoRollSection = document.querySelector('.piano-roll-section') as HTMLElement;
     // マルチタッチ検知: 2本以上で有効にして、以降のポインター操作でノート追加を無視する
