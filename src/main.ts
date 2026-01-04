@@ -619,6 +619,7 @@ class Sequencer {
   private setupEventListeners() {
     document.getElementById('title-input')?.addEventListener('input', (e) => {
       this.title = (e.target as HTMLInputElement).value.trim();
+      document.title = `${this.title} - ${i18next.t('title')}`;
     });
 
     // Playback controls
@@ -1558,6 +1559,7 @@ class Sequencer {
 
     if (savedTitle) {
       this.title = savedTitle;
+      document.title = `${this.title} - ${i18next.t('title')}`;
       const titleInput = document.getElementById('title-input') as HTMLInputElement;
       if (titleInput) titleInput.value = this.title;
     }
@@ -1879,6 +1881,7 @@ class Sequencer {
 
   private clearAll() {
     this.stop();
+    document.title = i18next.t('title');
     this.title = i18next.t('untitled');
     this.notes = [];
     this.beats = [];
@@ -2433,6 +2436,7 @@ class Sequencer {
       this.saveData();
       
       this.title = filenameToName(file.name);
+      document.title = `${this.title} - ${i18next.t('title')}`;
       const titleInput = document.getElementById('title-input') as HTMLInputElement;
       if (titleInput) {
         titleInput.value = this.title;
