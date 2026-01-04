@@ -662,10 +662,14 @@ class Sequencer {
           return;
         }
         const newBpm = minmax(input.valueAsNumber, input.min ? parseInt(input.min) : 60, input.max ? parseInt(input.max) : 300);
+        const currentBpmBeat = this.getCurrentBpm(this.currentBeat).beat;
 
         // 再生中の場合、現在のビート位置を記録してからBPMを変更
         if (!this.paused) {
           this.recordBpmChanged();
+        }
+        if (currentBpmBeat !== null) {
+          this.bpms.set(currentBpmBeat, newBpm);
         }
         this.bpm = newBpm;
 
@@ -2243,11 +2247,16 @@ class Sequencer {
       return currentBeat;
   }
 
+  private getCurrentBpm(targetBeat: number) {
+    const [beat, bpm] = Array.from(this.bpms.entries()).findLast(([beat]) => beat <= targetBeat) || [null, null];
+    return { beat, bpm };
+  }
+
   private applyTempoChangesUpTo(targetBeat: number) {
     if (!this.bpms || this.bpms.size === 0) return;
 
-    const newBpm = Array.from(this.bpms.entries()).findLast(([beat]) => beat <= targetBeat)?.[1];
-    if (newBpm === undefined || newBpm === this.bpm) return;
+    const newBpm = this.getCurrentBpm(targetBeat).bpm;
+    if (newBpm === null || newBpm === this.bpm) return;
 
     // update bpm and time baseline
     if (!this.paused) {
