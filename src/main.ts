@@ -2220,9 +2220,11 @@ class Sequencer {
     // Update Media Session position state
     if ('mediaSession' in navigator) {
       const duration = this.calculateDuration();
+      const endOfTrack = this.getEndOfTrack();
+      if (endOfTrack === 0) return;
       navigator.mediaSession.setPositionState({
         duration,
-        position: duration * (this.currentBeat / this.getEndOfTrack()),
+        position: duration * (this.currentBeat / endOfTrack),
       });
     }
   }
