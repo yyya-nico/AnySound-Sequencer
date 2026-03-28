@@ -112,55 +112,41 @@
             menu
           </button>
           <div class="menu-content">
-            <div class="selects">
-              <!-- 再生速度設定 -->
-              <div class="speed-control">
-                <label for="speed-select" data-i18n="speed">Speed</label>
-                <select id="speed-select">
-                  <option value="0.5" data-i18n="half_speed">0.5x</option>
-                  <option value="1" selected data-i18n="normal_speed">1x</option>
-                  <option value="2" data-i18n="double_speed">2x</option>
-                  <option value="4" data-i18n="quadruple_speed">4x</option>
-                </select>
-              </div>
-              <!-- クオンタイズ -->
-              <div class="quantization-control">
-                <label for="quantization-select" data-i18n="quantization">Quantization</label>
-                <select id="quantization-select">
-                  <option value="1" data-i18n="4th_note">1/4</option>
-                  <option value="0.5" data-i18n="8th_note" selected>1/8</option>
-                  <option value="0.25" data-i18n="16th_note">1/16</option>
-                  <option value="-1" data-i18n="no_quantization">None</option>
-                </select>
-              </div>
+            <!-- 再生速度設定 -->
+            <div class="select">
+              <label for="speed-select" data-i18n="speed">Speed</label>
+              <select id="speed-select">
+                <option value="0.5" data-i18n="half_speed">0.5x</option>
+                <option value="1" selected data-i18n="normal_speed">1x</option>
+                <option value="2" data-i18n="double_speed">2x</option>
+                <option value="4" data-i18n="quadruple_speed">4x</option>
+              </select>
+            </div>
+            <!-- クオンタイズ -->
+            <div class="select">
+              <label for="quantization-select" data-i18n="quantization">Quantization</label>
+              <select id="quantization-select">
+                <option value="1" data-i18n="4th_note">1/4</option>
+                <option value="0.5" data-i18n="8th_note" selected>1/8</option>
+                <option value="0.25" data-i18n="16th_note">1/16</option>
+                <option value="-1" data-i18n="no_quantization">None</option>
+              </select>
             </div>
             <!-- 音価を無視 -->
-            <div class="checkboxes">
-              <label class="checkbox-option" for="ignore-note-value-toggle">
-                <input type="checkbox" id="ignore-note-value-toggle">
-                <span data-i18n="ignore_note_value">Ignore Note Value</span>
-              </label>
-            </div>
+            <label class="checkbox-label" for="ignore-note-value-toggle">
+              <input type="checkbox" id="ignore-note-value-toggle">
+              <span data-i18n="ignore_note_value">Ignore Note Value</span>
+            </label>
             <!-- MIDIインポート -->
-            <div class="import-midi">
-              <button id="import-midi-btn" data-i18n="import_midi">Import MIDI</button>
-            </div>
+            <button id="import-midi-btn" data-i18n="import_midi">Import MIDI</button>
             <!-- MIDIエクスポート -->
-            <div class="export-midi">
-              <button id="export-midi-btn" data-i18n="export_midi">Export MIDI</button>
-            </div>
+            <button id="export-midi-btn" data-i18n="export_midi">Export MIDI</button>
             <!-- WAVエクスポート -->
-            <div class="export-wav">
-              <button id="export-wav-btn" data-i18n="export_wav">Export WAV</button>
-            </div>
+            <button id="export-wav-btn" data-i18n="export_wav">Export WAV</button>
             <!-- 音源ファイル全消去 -->
-            <div class="clear-sounds-button">
-              <button id="clear-sounds-btn" class="danger" data-i18n="clear_sounds">Clear Sound Sources</button>
-            </div>
+            <button id="clear-sounds-btn" class="danger" data-i18n="clear_sounds">Clear Sound Sources</button>
             <!-- 全消去 -->
-            <div class="clear-all-button">
-              <button id="clear-all-btn" class="danger" data-i18n="clear_all">Clear All</button>
-            </div>
+            <button id="clear-all-btn" class="danger" data-i18n="clear_all">Clear All</button>
           </div>
         </div>
       </div>

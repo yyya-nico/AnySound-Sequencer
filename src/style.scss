@@ -829,8 +829,9 @@ header {
 }
 
 .menu-content {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
   gap: 6px;
   position: absolute;
   right: 0;
@@ -847,72 +848,45 @@ header {
   border: 1px solid #333;
   border-radius: 5px;
   box-shadow: 0 0 8px 0 #000000;
-}
 
-.selects {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  align-items: center;
-  gap: 6px;
-
-  .speed-control,
-  .quantization-control {
+  .select {
     display: contents;
   }
 
-  label {
-    margin-inline-start: 8px;
-    color: #ccc;
+  label,
+  button {
+    padding: 8px;
     font-size: 14px;
   }
-}
 
-.checkboxes {
   label {
+    color: #ccc;
+  }
+
+  .checkbox-label,
+  button {
+    grid-column: 1 / -1;
+
+    &:hover {
+      background-color: #494949;
+    }
+
+    &:active {
+      background-color: #111111;
+    }
+  }
+
+  .checkbox-label {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px;
+    gap: 6px;
     border-radius: 5px;
-    color: #ccc;
-    font-size: 14px;
     cursor: pointer;
-
-    &:hover {
-      background-color: #494949;
-    }
-
-    &:active {
-      background-color: #111111;
-    }
-
-    input[type="checkbox"] {
-      margin: 0;
-    }
   }
-}
-
-.import-midi,
-.export-midi,
-.export-wav,
-.clear-sounds-button,
-.clear-all-button {
-  grid-column: 1 / -1;
 
   button {
-    width: 100%;
-    padding: 8px;
-    font-size: 14px;
     background-color: transparent;
     text-align: left;
-
-    &:hover {
-      background-color: #494949;
-    }
-
-    &:active {
-      background-color: #111111;
-    }
   }
 }
 
