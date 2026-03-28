@@ -10,6 +10,7 @@
   "record": "Record",
   "bpm": "BPM",
   "speed": "Speed",
+  "ignore_note_value": "Ignore Note Value",
   "half_speed": "0.5x",
   "normal_speed": "1x",
   "double_speed": "2x",

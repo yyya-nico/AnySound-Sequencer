@@ -10,6 +10,7 @@
   "record": "録音",
   "bpm": "BPM",
   "speed": "速度",
+  "ignore_note_value": "音価を無視",
   "half_speed": "0.5倍",
   "normal_speed": "1倍",
   "double_speed": "2倍",

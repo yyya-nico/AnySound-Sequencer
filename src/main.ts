@@ -233,7 +233,7 @@ class AudioManager {
     });
   }
 
-  playNote(note: Note, filename: string, bpm: number, when: number = 0) {
+  playNote(note: Note, filename: string, bpm: number, when: number = 0, ignoreNoteValue: boolean = false) {
     const sample = this.melodySamples.get(filename)?.get(note.pitch);
     if (!sample) return;
 
@@ -258,7 +258,7 @@ class AudioManager {
     const startTime = this.context.currentTime + when;
     source.start(startTime);
 
-    if (sample.type === 'file') {
+    if (sample.type === 'file' && !ignoreNoteValue) {
       source.stop(startTime + durationInSeconds);
     }
   }
@@ -342,6 +342,7 @@ class AudioManager {
     bpm: number;
     bpms: Map<number, number>; // beat position -> bpm
     playbackSpeed: number;
+    ignoreNoteValue: boolean;
     duration: number;
     sampleRate?: number;
     numChannels?: number;
@@ -418,7 +419,7 @@ class AudioManager {
       const startSec = beatPosToSeconds(note.start);
       const durationSec = beatRangeToSeconds(note.start, note.length);
       const startSample = Math.floor(startSec * sampleRate);
-      const endSample = Math.min(totalSamples, startSample + Math.ceil(durationSec * sampleRate));
+      let endSample = Math.min(totalSamples, startSample + Math.ceil(durationSec * sampleRate));
       const gain = masterGain * (note.velocity / 127) * 0.5;
 
       if (sample.type === 'file' && sample.buffer instanceof AudioBuffer) {
@@ -426,6 +427,10 @@ class AudioManager {
         const srcChannels: Float32Array[] = [];
         for (let c = 0; c < srcBuf.numberOfChannels; c++) srcChannels.push(srcBuf.getChannelData(c));
         const playbackRate = this.midiToPercentage(note.pitch, this.melodyPitchShifts.get(filename) || 0);
+        if (params.ignoreNoteValue) {
+          const sourceDurationSec = (srcBuf.length / srcBuf.sampleRate) / Math.max(playbackRate, 0.0001);
+          endSample = Math.min(totalSamples, startSample + Math.ceil(sourceDurationSec * sampleRate));
+        }
         noteInfos.push({ note, startSample, endSample, isSine: false, sourceData: srcChannels, sourceSampleRate: srcBuf.sampleRate, playbackRate, gain });
       } else {
         noteInfos.push({ note, startSample, endSample, isSine: true, frequency: this.midiToFrequency(note.pitch), durationSec, gain });
@@ -583,6 +588,7 @@ class Sequencer {
   private bpm: number = 120;
   private bpms: Map<number, number> = new Map(); // beat position -> bpm
   private playbackSpeed: number = 1; // 0.5x, 1x, 2x
+  private ignoreNoteValue: boolean = false;
   private quantization: number = 0.5; // in beats
   private defaultNoteLength: number = 1;
   private paused: boolean = true;
@@ -717,6 +723,11 @@ class Sequencer {
       document.querySelectorAll('.beat').forEach(beat => beat.remove());
       this.createBeats();
       this.beats.forEach(beat => this.renderBeat(beat));
+    });
+    const ignoreNoteValueToggle = document.getElementById('ignore-note-value-toggle') as HTMLInputElement;
+    ignoreNoteValueToggle?.addEventListener('change', (e) => {
+      this.ignoreNoteValue = (e.target as HTMLInputElement).checked;
+      this.saveData();
     });
 
     // Audio file inputs
@@ -1550,6 +1561,7 @@ class Sequencer {
     const savedBpm = await localForage.getItem<number>('bpm');
     const savedBpms = await localForage.getItem<Map<number, number>>('bpms');
     const savedPlaybackSpeed = await localForage.getItem<number>('playbackSpeed');
+    const savedignoreNoteValue = await localForage.getItem<boolean>('ignoreNoteValue');
     const savedQuantization = await localForage.getItem<number>('quantization');
     const savedAudioFiles = await localForage.getItem<AudioFile[]>('audioFiles');
     const savedAudioFilenames = await localForage.getItem<Filenames>('audioFilenames');
@@ -1597,6 +1609,12 @@ class Sequencer {
       this.playbackSpeed = savedPlaybackSpeed;
       const speedSelect = document.getElementById('speed-select') as HTMLSelectElement;
       if (speedSelect) speedSelect.value = this.playbackSpeed.toString();
+    }
+
+    if (typeof savedignoreNoteValue === 'boolean') {
+      this.ignoreNoteValue = savedignoreNoteValue;
+      const ignoreNoteValueToggle = document.getElementById('ignore-note-value-toggle') as HTMLInputElement;
+      if (ignoreNoteValueToggle) ignoreNoteValueToggle.checked = this.ignoreNoteValue;
     }
 
     if (savedQuantization !== null && !isNaN(savedQuantization)) {
@@ -1742,6 +1760,7 @@ class Sequencer {
     localForage.setItem('bpm', this.bpm);
     localForage.setItem('bpms', this.bpms);
     localForage.setItem('playbackSpeed', this.playbackSpeed);
+    localForage.setItem('ignoreNoteValue', this.ignoreNoteValue);
     localForage.setItem('quantization', this.quantization);
     localForage.setItem('audioFiles', this.files);
     localForage.setItem('audioFilenames', this.filenames);
@@ -1892,6 +1911,7 @@ class Sequencer {
     this.bpm = 120;
     this.bpms = new Map();
     this.playbackSpeed = 1;
+    this.ignoreNoteValue = false;
     this.instrumentCodes = {};
     this.gridSize = 64;
 
@@ -1917,6 +1937,8 @@ class Sequencer {
     if (bpmValue) bpmValue.valueAsNumber = this.bpm;
     const speedSelect = document.getElementById('speed-select') as HTMLSelectElement;
     if (speedSelect) speedSelect.value = this.playbackSpeed.toString();
+    const ignoreNoteValueToggle = document.getElementById('ignore-note-value-toggle') as HTMLInputElement;
+    if (ignoreNoteValueToggle) ignoreNoteValueToggle.checked = this.ignoreNoteValue;
     const loopToggle = document.getElementById('loop-toggle') as HTMLInputElement;
     if (loopToggle) loopToggle.checked = true;
     this.clearSounds();
@@ -2286,7 +2308,7 @@ class Sequencer {
       if (noteIntersected) {
         if (this.playedNotes.has(note.id)) return;
         const filename = this.getFilenameByTrack(note.track);
-        this.audioManager.playNote(note, filename, this.bpm * this.playbackSpeed);
+        this.audioManager.playNote(note, filename, this.bpm * this.playbackSpeed, 0, this.ignoreNoteValue);
         this.playedNotes.add(note.id);
       } else if (this.playedNotes.has(note.id)) {
         this.playedNotes.delete(note.id);
@@ -2559,6 +2581,7 @@ class Sequencer {
       bpm: this.bpm,
       bpms: this.bpms,
       playbackSpeed: this.playbackSpeed,
+      ignoreNoteValue: this.ignoreNoteValue,
       duration: this.calculateDuration(),
       sampleRate: 44100,
       numChannels: 2

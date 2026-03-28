@@ -529,12 +529,14 @@ header {
   z-index: 2;
   width: 2px;
   height: calc(
-    100vh - var(--header-height) - var(--control-panel-height, 73px) -
-      var(--scrollbar-width)
+    100vh - var(--header-height) - var(--control-panel-height, 73px) - var(
+        --scrollbar-width
+      )
   );
   height: calc(
-    100dvh - var(--header-height) - var(--control-panel-height, 73px) -
-      var(--scrollbar-width)
+    100dvh - var(--header-height) - var(--control-panel-height, 73px) - var(
+        --scrollbar-width
+      )
   );
   margin-inline: -1px;
   background: #a11f1f;
@@ -836,7 +838,9 @@ header {
   z-index: 2;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.1s ease, visibility 0.1s ease;
+  transition:
+    opacity 0.1s ease,
+    visibility 0.1s ease;
   width: 280px;
   padding: 6px;
   background: #2d2d2d;
@@ -860,6 +864,31 @@ header {
     margin-inline-start: 8px;
     color: #ccc;
     font-size: 14px;
+  }
+}
+
+.checkboxes {
+  label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 5px;
+    color: #ccc;
+    font-size: 14px;
+    cursor: pointer;
+
+    &:hover {
+      background-color: #494949;
+    }
+
+    &:active {
+      background-color: #111111;
+    }
+
+    input[type="checkbox"] {
+      margin: 0;
+    }
   }
 }
 
@@ -906,15 +935,21 @@ header {
 
 // Grid styles for piano roll and rhythm
 .grid {
-  background-image: linear-gradient(to right, #333 1px, transparent 1px),
+  background-image:
+    linear-gradient(to right, #333 1px, transparent 1px),
     linear-gradient(to bottom, #333 1px, transparent 1px),
     linear-gradient(to right, #333 2px, transparent 1px),
     linear-gradient(to bottom, #444 2px, transparent 1px);
-  background-size: var(--width-per-note) var(--height-per-note),
+  background-size:
+    var(--width-per-note) var(--height-per-note),
     var(--width-per-note) var(--height-per-note),
     calc(var(--width-per-note) * 4) var(--height-per-note),
     var(--width-per-note) calc(var(--height-per-note) * 12);
-  background-position: 0 0, 0 0, 0 0, 0 20px;
+  background-position:
+    0 0,
+    0 0,
+    0 0,
+    0 20px;
 }
 
 .note {
