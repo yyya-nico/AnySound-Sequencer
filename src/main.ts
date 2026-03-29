@@ -2243,7 +2243,7 @@ class Sequencer {
     if ('mediaSession' in navigator) {
       const duration = this.calculateDuration();
       const endOfTrack = this.getEndOfTrack();
-      if (endOfTrack === 0) return;
+      if (endOfTrack === 0 || this.currentBeat > endOfTrack) return;
       navigator.mediaSession.setPositionState({
         duration,
         position: duration * (this.currentBeat / endOfTrack),
