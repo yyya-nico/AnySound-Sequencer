@@ -16,6 +16,8 @@
   "double_speed": "2x",
   "quadruple_speed": "4x",
   "quantization": "Quantization",
+  "horizontal_zoom": "Horizontal Zoom",
+  "vertical_zoom": "Vertical Zoom",
   "4th_note": "1/4 Note",
   "8th_note": "1/8 Note",
   "16th_note": "1/16 Note",

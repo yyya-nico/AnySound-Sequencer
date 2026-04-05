@@ -16,6 +16,8 @@
   "double_speed": "2倍",
   "quadruple_speed": "4倍",
   "quantization": "クオンタイズ",
+  "horizontal_zoom": "横方向ズーム",
+  "vertical_zoom": "縦方向ズーム",
   "4th_note": "4分音符",
   "8th_note": "8分音符",
   "16th_note": "16分音符",

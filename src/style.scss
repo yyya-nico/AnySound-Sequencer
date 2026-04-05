@@ -373,7 +373,7 @@ header {
   --sound-panel-width: 200px;
   --width-per-note: 40px; // 4th note
   --height-per-note: 20px;
-  --grid-size: 64; // 64 beats
+  --grid-size: 128; // 128 beats
   --grid-keys: 88; // 88 keys
   display: flex;
   min-height: 0;
@@ -692,6 +692,7 @@ header {
   place-items: center;
   height: 100%;
   background-image: linear-gradient(to right, #333 2px, transparent 1px);
+  background-position: -1px 0;
   background-size: calc(var(--width-per-note) * 4) 100%; // Highlight every 4 beats
   background-color: #1e1e1e;
 }
@@ -842,7 +843,7 @@ header {
   transition:
     opacity 0.1s ease,
     visibility 0.1s ease;
-  width: 280px;
+  width: 320px;
   padding: 6px;
   background: #2d2d2d;
   border: 1px solid #333;
@@ -851,6 +852,28 @@ header {
 
   .select {
     display: contents;
+  }
+
+  .range-control {
+    display: contents;
+  }
+
+  .range-with-value {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    input[type="range"] {
+      flex: 1;
+      min-width: 0;
+    }
+
+    output {
+      min-width: 40px;
+      color: #66ccff;
+      font-size: 12px;
+      text-align: right;
+    }
   }
 
   label,
@@ -921,10 +944,10 @@ header {
     calc(var(--width-per-note) * 4) var(--height-per-note),
     var(--width-per-note) calc(var(--height-per-note) * 12);
   background-position:
-    0 0,
-    0 0,
-    0 0,
-    0 20px;
+    -1px 0,
+    0 -1px,
+    -1px 0,
+    0 calc(var(--height-per-note) - 2px);
 }
 
 .note {

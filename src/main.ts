@@ -560,8 +560,11 @@ class AudioManager {
 
 // Sequencer Class
 class Sequencer {
-  private static readonly noteWidth = 40; // pixels per beat
-  private static readonly noteHeight = 20; // pixels per note
+  private static readonly baseNoteWidth = 40; // pixels per beat at 1x
+  private static readonly baseNoteHeight = 20; // pixels per note at 1x
+  private static readonly minGridScale = 0.5;
+  private static readonly maxGridScale = 3;
+  private static readonly gridScaleSnapThreshold = 0.06;
   private audioManager: AudioManager;
   private viewPort: {
     startBeat: number | null;
@@ -593,7 +596,7 @@ class Sequencer {
   private defaultNoteLength: number = 1;
   private paused: boolean = true;
   private ended: boolean = true;
-  private gridSize: number = 64; // 64 beats
+  private gridSize: number = 128; // 128 beats
   private visibleNoteElements: Map<string, HTMLElement> = new Map(); // noteId -> element
   private saveTimeout: number | null = null;
   private bpmChanged: { time: number; beat: number; } = {
@@ -608,6 +611,87 @@ class Sequencer {
   private selectionStartX: number = 0;
   private selectionStartY: number = 0;
   private multiTouched: boolean = false; // true when 2+ touch points are active
+  private pinchStart: {
+    deltaX: number;
+    deltaY: number;
+    scaleX: number;
+    scaleY: number;
+    lastCenterX: number;
+    lastCenterY: number;
+  } | null = null;
+  private gridScaleX: number = 1;
+  private gridScaleY: number = 1;
+
+  private get noteWidth() {
+    return Sequencer.baseNoteWidth * this.gridScaleX;
+  }
+
+  private get noteHeight() {
+    return Sequencer.baseNoteHeight * this.gridScaleY;
+  }
+
+  private snapScaleToOne(value: number) {
+    return Math.abs(value - 1) <= Sequencer.gridScaleSnapThreshold ? 1 : value;
+  }
+
+  private updateGridScaleUi() {
+    const widthRange = document.getElementById('width-scale-range') as HTMLInputElement | null;
+    const heightRange = document.getElementById('height-scale-range') as HTMLInputElement | null;
+    const widthValue = document.getElementById('width-scale-value') as HTMLOutputElement | null;
+    const heightValue = document.getElementById('height-scale-value') as HTMLOutputElement | null;
+
+    if (widthRange) widthRange.value = this.gridScaleX.toString();
+    if (heightRange) heightRange.value = this.gridScaleY.toString();
+    if (widthValue) widthValue.value = `${this.gridScaleX.toFixed(2)}x`;
+    if (heightValue) heightValue.value = `${this.gridScaleY.toFixed(2)}x`;
+  }
+
+  private applyGridScale(
+    scaleX: number,
+    scaleY: number,
+    keepAnchor: boolean = true,
+    rerender: boolean = true,
+    anchorClientX?: number,
+    anchorClientY?: number,
+  ) {
+    const nextScaleX = minmax(scaleX, Sequencer.minGridScale, Sequencer.maxGridScale);
+    const nextScaleY = minmax(scaleY, Sequencer.minGridScale, Sequencer.maxGridScale);
+    const beforeNoteWidth = this.noteWidth;
+    const beforeNoteHeight = this.noteHeight;
+    const scaleChanged = this.gridScaleX !== nextScaleX || this.gridScaleY !== nextScaleY;
+    const rolls = document.querySelector('.rolls') as HTMLElement | null;
+    const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement | null;
+
+    let anchorX = 0;
+    let anchorY = 0;
+    let beatAtAnchor = 0;
+    let pitchAtAnchor = 0;
+    if (keepAnchor && rolls) {
+      anchorX = anchorClientX ?? rolls.clientWidth / 2;
+      anchorY = anchorClientY ?? rolls.clientHeight / 2;
+      beatAtAnchor = (rolls.scrollLeft + anchorX) / beforeNoteWidth;
+      pitchAtAnchor = (rolls.scrollTop + anchorY) / beforeNoteHeight;
+    }
+
+    this.gridScaleX = nextScaleX;
+    this.gridScaleY = nextScaleY;
+
+    if (sequencerContainer) {
+      sequencerContainer.style.setProperty('--width-per-note', `${this.noteWidth}px`);
+      sequencerContainer.style.setProperty('--height-per-note', `${this.noteHeight}px`);
+    }
+
+    this.updateGridScaleUi();
+
+    if (keepAnchor && rolls && scaleChanged) {
+      rolls.scrollLeft = Math.max(0, beatAtAnchor * this.noteWidth - anchorX);
+      rolls.scrollTop = Math.max(0, pitchAtAnchor * this.noteHeight - anchorY);
+    }
+
+    if (rerender && scaleChanged) {
+      this.renderTracks();
+    }
+  }
 
   constructor() {
     this.audioManager = new AudioManager();
@@ -653,7 +737,7 @@ class Sequencer {
 
     const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
     sequencerContainer.addEventListener('touchmove', (e) => {
-      if (this.paused && !this.multiTouched) { // 停止中の1本指操作は無視(スクロールさせない)
+      if (this.paused || this.multiTouched) { // 停止中の1本指操作とマルチタッチ中はブラウザ操作を抑止
         e.preventDefault();
       }
     }, { passive: false });
@@ -724,6 +808,23 @@ class Sequencer {
       this.createBeats();
       this.beats.forEach(beat => this.renderBeat(beat));
     });
+    const widthScaleRange = document.getElementById('width-scale-range') as HTMLInputElement | null;
+    const heightScaleRange = document.getElementById('height-scale-range') as HTMLInputElement | null;
+    if (widthScaleRange && heightScaleRange) {
+      [widthScaleRange, heightScaleRange].forEach(range => {
+        range.addEventListener('input', () => {
+          const snappedScaleX = this.snapScaleToOne(widthScaleRange.valueAsNumber);
+          const snappedScaleY = this.snapScaleToOne(heightScaleRange.valueAsNumber);
+          widthScaleRange.value = snappedScaleX.toString();
+          heightScaleRange.value = snappedScaleY.toString();
+          this.applyGridScale(snappedScaleX, snappedScaleY);
+        });
+        range.addEventListener('change', () => {
+          this.saveData();
+        });
+      });
+    }
+    this.updateGridScaleUi();
     const ignoreNoteValueToggle = document.getElementById('ignore-note-value-toggle') as HTMLInputElement;
     ignoreNoteValueToggle?.addEventListener('change', (e) => {
       this.ignoreNoteValue = (e.target as HTMLInputElement).checked;
@@ -855,7 +956,7 @@ class Sequencer {
 
     const rolls = document.querySelector('.rolls') as HTMLElement;
     document.getElementById('app')!.style.setProperty('--scrollbar-width', `${rolls.offsetHeight - rolls.clientHeight}px`);
-    rolls.scrollTop = Sequencer.noteHeight * (12 * 2 + 2); // 2 octaves + extra space
+    rolls.scrollTop = this.noteHeight * (12 * 2 + 2); // 2 octaves + extra space
     let beforeScrollLeft = 0, beforeScrollTop = rolls.scrollTop;
     rolls.addEventListener('pointerdown', () => {
       this.autoScroll = false;
@@ -872,7 +973,7 @@ class Sequencer {
       const target = e.target as HTMLElement;
       const scrollLeft = target.scrollLeft;
       const scrollTop = target.scrollTop;
-      if (Math.abs(scrollLeft - beforeScrollLeft) > Sequencer.noteWidth || Math.abs(scrollTop - beforeScrollTop) > Sequencer.noteHeight) {
+      if (Math.abs(scrollLeft - beforeScrollLeft) > this.noteWidth || Math.abs(scrollTop - beforeScrollTop) > this.noteHeight) {
         beforeScrollLeft = scrollLeft;
         beforeScrollTop = scrollTop;
         this.renderTracks();
@@ -886,21 +987,79 @@ class Sequencer {
     let beforePaused = true;
     
     const pianoRollSection = document.querySelector('.piano-roll-section') as HTMLElement;
-    // マルチタッチ検知: 2本以上で有効にして、以降のポインター操作でノート追加を無視する
-    (['touchstart', 'touchmove', 'touchend'] as (keyof HTMLElementEventMap)[]).forEach(eventName => {
-      pianoRollSection.addEventListener(eventName, (e) => {
-        const touchEvent = e as TouchEvent;
-        if (touchEvent.touches.length >= 2) {
-          this.multiTouched = true;
-        }
-      }, { passive: true });
-    });
-    pianoRollSection.addEventListener('touchend', (e) => {
+    const getPinchData = (touches: TouchList) => {
+      if (touches.length < 2) return null;
+      const firstTouch = touches[0];
+      const secondTouch = touches[1];
+      return {
+        deltaX: Math.max(2, Math.abs(secondTouch.clientX - firstTouch.clientX)),
+        deltaY: Math.max(2, Math.abs(secondTouch.clientY - firstTouch.clientY)),
+        centerX: (firstTouch.clientX + secondTouch.clientX) / 2,
+        centerY: (firstTouch.clientY + secondTouch.clientY) / 2,
+      };
+    };
+
+    // マルチタッチ時はノート編集を無効化し、2本指のX/Y差分比率で横/縦ズームを独立して更新
+    pianoRollSection.addEventListener('touchstart', (e) => {
       const touchEvent = e as TouchEvent;
-      if (touchEvent.touches.length === 0) {
+      if (touchEvent.touches.length < 2) return;
+      this.multiTouched = true;
+      const pinchData = getPinchData(touchEvent.touches);
+      if (!pinchData) return;
+      this.pinchStart = {
+        deltaX: pinchData.deltaX,
+        deltaY: pinchData.deltaY,
+        scaleX: this.gridScaleX,
+        scaleY: this.gridScaleY,
+        lastCenterX: pinchData.centerX,
+        lastCenterY: pinchData.centerY,
+      };
+    }, { passive: true });
+
+    pianoRollSection.addEventListener('touchmove', (e) => {
+      const touchEvent = e as TouchEvent;
+      if (touchEvent.touches.length < 2 || !this.pinchStart) return;
+
+      const pinchData = getPinchData(touchEvent.touches);
+      if (!pinchData) return;
+
+      // 2本指の中心移動量をスクロールに反映して、ピンチ中の平行移動を可能にする
+      const deltaCenterX = pinchData.centerX - this.pinchStart.lastCenterX;
+      const deltaCenterY = pinchData.centerY - this.pinchStart.lastCenterY;
+      rolls.scrollBy({ left: -deltaCenterX, top: -deltaCenterY });
+      this.pinchStart.lastCenterX = pinchData.centerX;
+      this.pinchStart.lastCenterY = pinchData.centerY;
+
+      const nextScaleX = this.pinchStart.scaleX * (pinchData.deltaX / this.pinchStart.deltaX);
+      const nextScaleY = this.pinchStart.scaleY * (pinchData.deltaY / this.pinchStart.deltaY);
+      const rollsRect = rolls.getBoundingClientRect();
+      const anchorX = minmax(pinchData.centerX - rollsRect.left, 0, rolls.clientWidth);
+      const anchorY = minmax(pinchData.centerY - rollsRect.top, 0, rolls.clientHeight);
+
+      this.applyGridScale(nextScaleX, nextScaleY, true, true, anchorX, anchorY);
+      touchEvent.preventDefault();
+    }, { passive: false });
+
+    const finishPinch = (touches: TouchList) => {
+      const hadPinch = this.pinchStart !== null;
+      if (touches.length < 2) {
+        this.pinchStart = null;
+      }
+      if (touches.length === 0) {
         this.multiTouched = false;
       }
-    });
+      if (hadPinch && touches.length < 2) {
+        this.saveData();
+      }
+    };
+
+    pianoRollSection.addEventListener('touchend', (e) => {
+      finishPinch((e as TouchEvent).touches);
+    }, { passive: true });
+
+    pianoRollSection.addEventListener('touchcancel', (e) => {
+      finishPinch((e as TouchEvent).touches);
+    }, { passive: true });
 
     playbackPosition.addEventListener('pointerdown', (e) => {
       if (!e.isPrimary || e.button !== 0) return; // 左クリックのみ
@@ -921,9 +1080,9 @@ class Sequencer {
       const currentRelativeX = e.clientX - pianoRollRect.left;
       const deltaX = currentRelativeX - initialRelativeX;
       
-      const newPosition = minmax(beforePos + deltaX, 0, this.gridSize * Sequencer.noteWidth);
+      const newPosition = minmax(beforePos + deltaX, 0, this.gridSize * this.noteWidth);
       playbackPosition.style.setProperty('--position', `${newPosition}px`);
-      const newBeat = newPosition / Sequencer.noteWidth;
+      const newBeat = newPosition / this.noteWidth;
       this.currentBeat = newBeat;
       
       this.applyTempoChangesUpTo(this.currentBeat);
@@ -1209,11 +1368,11 @@ class Sequencer {
       const y = e.clientY - rect.top;
       let pointerNotePosition = null;
       if (this.quantization < 0) {
-        pointerNotePosition = x / Sequencer.noteWidth;
+        pointerNotePosition = x / this.noteWidth;
       } else {
-        pointerNotePosition = multipleFloor(x / Sequencer.noteWidth, this.quantization);
+        pointerNotePosition = multipleFloor(x / this.noteWidth, this.quantization);
       }
-      const pointerNoteIndex = Math.floor(y / Sequencer.noteHeight);
+      const pointerNoteIndex = Math.floor(y / this.noteHeight);
       const pointerMidiNote = 108 - pointerNoteIndex; // C8 at top
       const isPointerDown = e.type === 'pointerdown';
       if (isPointerDown) {
@@ -1483,9 +1642,9 @@ class Sequencer {
         const deltaX = e.clientX - startX;
         let newNoteValue = null;
         if (this.quantization < 0) {
-          newNoteValue = Math.max(0.1, (originalWidth + deltaX) / Sequencer.noteWidth);
+          newNoteValue = Math.max(0.1, (originalWidth + deltaX) / this.noteWidth);
         } else {
-          newNoteValue = Math.max(this.quantization, multipleFloor((originalWidth + deltaX) / Sequencer.noteWidth, this.quantization));
+          newNoteValue = Math.max(this.quantization, multipleFloor((originalWidth + deltaX) / this.noteWidth, this.quantization));
         }
         note.length = newNoteValue;
         this.updateNoteMeta(noteElem, note);
@@ -1567,10 +1726,18 @@ class Sequencer {
     const savedAudioFilenames = await localForage.getItem<Filenames>('audioFilenames');
     const savedInstrumentCodes = await localForage.getItem<InstrumentCodes>('instrumentCodes');
     const savedGridSize = await localForage.getItem<number>('gridSize');
+    const savedGridScaleX = await localForage.getItem<number>('gridScaleX');
+    const savedGridScaleY = await localForage.getItem<number>('gridScaleY');
 
     if (savedGridSize) {
       this.gridSize = savedGridSize;
       (document.querySelector('.sequencer-container') as HTMLElement).style.setProperty('--grid-size', this.gridSize.toString());
+    }
+
+    if (typeof savedGridScaleX === 'number' || typeof savedGridScaleY === 'number') {
+      this.applyGridScale(savedGridScaleX ?? this.gridScaleX, savedGridScaleY ?? this.gridScaleY, false, false);
+    } else {
+      this.applyGridScale(this.gridScaleX, this.gridScaleY, false, false);
     }
 
     if (savedTitle) {
@@ -1714,12 +1881,12 @@ class Sequencer {
     const adjustedViewHeight = viewHeight - rhythmSectionHeight;
     
     // ビート範囲（少し余裕を持たせる）
-    this.viewPort.startBeat = Math.max(0, Math.floor(scrollLeft / Sequencer.noteWidth) - 2);
-    this.viewPort.endBeat = Math.ceil((scrollLeft + viewWidth) / Sequencer.noteWidth) + 2;
+    this.viewPort.startBeat = Math.max(0, Math.floor(scrollLeft / this.noteWidth) - 2);
+    this.viewPort.endBeat = Math.ceil((scrollLeft + viewWidth) / this.noteWidth) + 2;
 
     // ピッチ範囲
-    this.viewPort.startPitch = 108 - Math.max(0, Math.floor(scrollTop / Sequencer.noteHeight) - 2);
-    this.viewPort.endPitch = 108 - Math.min(127, Math.ceil((scrollTop + adjustedViewHeight) / Sequencer.noteHeight) + 2);
+    this.viewPort.startPitch = 108 - Math.max(0, Math.floor(scrollTop / this.noteHeight) - 2);
+    this.viewPort.endPitch = 108 - Math.min(127, Math.ceil((scrollTop + adjustedViewHeight) / this.noteHeight) + 2);
   }
 
   private isNoteVisible(note: Note): boolean {
@@ -1766,6 +1933,8 @@ class Sequencer {
     localForage.setItem('audioFilenames', this.filenames);
     localForage.setItem('instrumentCodes', this.instrumentCodes);
     localForage.setItem('gridSize', this.gridSize);
+    localForage.setItem('gridScaleX', this.gridScaleX);
+    localForage.setItem('gridScaleY', this.gridScaleY);
   }
 
   private switchToNextTrack(direction: number) {
@@ -1913,7 +2082,8 @@ class Sequencer {
     this.playbackSpeed = 1;
     this.ignoreNoteValue = false;
     this.instrumentCodes = {};
-    this.gridSize = 64;
+    this.gridSize = 128;
+    this.applyGridScale(1, 1, false, false);
 
     // Clear UI
     const titleInput = document.getElementById('title-input') as HTMLInputElement;
@@ -2098,10 +2268,10 @@ class Sequencer {
       const isCurrentNote = note.track === this.currentTrack;
       if (!noteElement || !isCurrentNote) return; // 非アクティブノートは選択対象外
 
-      const noteLeft = note.start * Sequencer.noteWidth;
-      const noteTop = (108 - note.pitch) * Sequencer.noteHeight;
-      const noteRight = noteLeft + note.length * Sequencer.noteWidth;
-      const noteBottom = noteTop + Sequencer.noteHeight;
+      const noteLeft = note.start * this.noteWidth;
+      const noteTop = (108 - note.pitch) * this.noteHeight;
+      const noteRight = noteLeft + note.length * this.noteWidth;
+      const noteBottom = noteTop + this.noteHeight;
 
       // 矩形との重なりをチェック
       const overlaps = !(noteRight < left || noteLeft > right || noteBottom < top || noteTop > bottom);
@@ -2159,8 +2329,8 @@ class Sequencer {
       const deltaX = currentX - startX;
       const deltaY = currentY - startY;
       
-      const deltaBeat = deltaX / Sequencer.noteWidth;
-      const deltaPitch = -Math.round(deltaY / Sequencer.noteHeight); // Y軸は反転
+      const deltaBeat = deltaX / this.noteWidth;
+      const deltaPitch = -Math.round(deltaY / this.noteHeight); // Y軸は反転
 
       selectedNotesData.forEach(({note, initialStart, initialPitch}) => {
         let newStart = null;
@@ -2352,7 +2522,7 @@ class Sequencer {
       this.currentBeat = this.getCurrentBeat(timeStamp);
       
       // playbackPositionの位置を更新
-      const positionInPixels = this.currentBeat * Sequencer.noteWidth;
+      const positionInPixels = this.currentBeat * this.noteWidth;
       playbackPosition.style.setProperty('--position', `${positionInPixels}px`);
 
       if (this.autoScroll) {
@@ -2439,7 +2609,7 @@ class Sequencer {
       this.instrumentCodes = sequencerData.instrumentCodes;
       this.bpm = sequencerData.bpms.size > 0 ? Array.from(sequencerData.bpms.values())[0] : 120;
       this.bpms = sequencerData.bpms;
-      this.gridSize = Math.max(64, sequencerData.gridSize);
+      this.gridSize = Math.max(128, sequencerData.gridSize);
       
       // Update UI
       const sequencerContainer = document.querySelector('.sequencer-container') as HTMLElement;
