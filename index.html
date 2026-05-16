@@ -154,19 +154,33 @@
               <input type="checkbox" id="ignore-note-value-toggle">
               <span data-i18n="ignore_note_value">Ignore Note Value</span>
             </label>
+            <!-- 音源の設定 -->
+            <button id="sound-sources-settings-btn" data-i18n="sound_sources_settings">Sound Sources Settings</button>
             <!-- MIDIインポート -->
             <button id="import-midi-btn" data-i18n="import_midi">Import MIDI</button>
             <!-- MIDIエクスポート -->
             <button id="export-midi-btn" data-i18n="export_midi">Export MIDI</button>
             <!-- WAVエクスポート -->
             <button id="export-wav-btn" data-i18n="export_wav">Export WAV</button>
-            <!-- 音源ファイル全消去 -->
-            <button id="clear-sounds-btn" class="danger" data-i18n="clear_sounds">Clear Sound Sources</button>
             <!-- 全消去 -->
             <button id="clear-all-btn" class="danger" data-i18n="clear_all">Clear All</button>
           </div>
         </div>
       </div>
+      <dialog id="sound-sources-dialog" class="sound-sources-dialog">
+        <form method="dialog">
+          <h2 data-i18n="sound_sources_settings">Sound Sources Settings</h2>
+          <div id="sound-sources-melody" class="sound-sources-dialog__grid"></div>
+          <div id="sound-sources-beat" class="sound-sources-dialog__grid"></div>
+          <div class="sound-sources-dialog__actions">
+            <button type="submit" id="sound-sources-close-btn" data-i18n="close">Close</button>
+            <div class="sound-sources-dialog__actions-right">
+              <button type="button" id="sound-sources-clear-btn" class="material-icons danger" title="Clear Sound Sources" data-i18n="clear_sounds">delete</button>
+              <button type="button" id="sound-sources-add-btn" class="material-icons" title="Add Sound Source File..." data-i18n="add_sound">add</button>
+            </div>
+          </div>
+        </form>
+      </dialog>
       <dialog id="dialog"></dialog>
     </main>
   </body>

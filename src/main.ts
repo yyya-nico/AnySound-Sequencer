@@ -54,6 +54,7 @@ function updateTranslations() {
 
   // Update document title
   document.title = i18next.t('title');
+  document.dispatchEvent(new CustomEvent('translations-updated'));
 }
 
 function setupLanguage() {
@@ -120,6 +121,13 @@ interface InstrumentCodes {
 interface AudioSample {
   buffer: AudioBuffer | null;
   type: 'sine' | 'file' | 'silent';
+}
+
+type SoundTrackKey = 'melody' | 'beat1' | 'beat2';
+
+interface SoundAssignmentTarget {
+  track: SoundTrackKey;
+  melodyTrack?: number;
 }
 
 // Audio Manager Class
@@ -625,6 +633,7 @@ class Sequencer {
   } | null = null;
   private gridScaleX: number = 1;
   private gridScaleY: number = 1;
+  private activeBulkSoundTarget: SoundAssignmentTarget = { track: 'melody', melodyTrack: 0 };
 
   private get noteWidth() {
     return Sequencer.baseNoteWidth * this.gridScaleX;
@@ -711,6 +720,8 @@ class Sequencer {
   }
 
   private setupEventListeners() {
+    this.setupBulkSoundDialog();
+
     document.getElementById('title-input')?.addEventListener('input', (e) => {
       this.title = (e.target as HTMLInputElement).value.trim();
       document.title = `${this.title} - ${i18next.t('title')}`;
@@ -794,6 +805,10 @@ class Sequencer {
         menu.classList.remove('is-open');
       }
     });
+    document.addEventListener('translations-updated', () => {
+      this.syncMainSoundControls();
+      this.syncBulkSoundDialog();
+    });
     const speedSelect = document.getElementById('speed-select') as HTMLSelectElement;
     speedSelect?.addEventListener('change', (e) => {
       const newPlaybackSpeed = parseFloat((e.target as HTMLSelectElement).value);
@@ -838,31 +853,10 @@ class Sequencer {
     // Audio file inputs
     const soundButtonsContainers = document.querySelectorAll('.sound');
     soundButtonsContainers.forEach(container => {
-      const track = (container as HTMLElement).dataset.track!;
-      const soundSelectLabel = container.querySelector('.sound-select-label') as HTMLElement;
+      const track = (container as HTMLElement).dataset.track as SoundTrackKey;
       const soundSelect = container.querySelector('.sound-select') as HTMLSelectElement;
       const removeSoundBtn = container.querySelector('.remove-sound') as HTMLButtonElement;
       const addSoundBtn = container.querySelector('.add-sound') as HTMLButtonElement;
-      const selectAudioFiles = () => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.wav,.mp3,.ogg,.flac,.aac,.m4a';
-        input.multiple = true;
-        const promise = new Promise<FileList | null>((resolve) => {
-          input.onchange = (event) => {
-            const files = (event.target as HTMLInputElement).files || null;
-            if (!files || files.length === 0) {
-              resolve(null);
-            }
-            resolve(files);
-          };
-          input.oncancel = () => {
-            resolve(null);
-          };
-        });
-        input.click();
-        return promise;
-      };
       const soundPreview = (filename: string) => {
         const noteId = `preview-sound-select-${Date.now()}`
         const note: Note = {
@@ -901,34 +895,23 @@ class Sequencer {
       });
 
       addSoundBtn.addEventListener('click', async () => {
-        selectAudioFiles().then(async files => {
-          if (!files || files.length === 0) {
-            // キャンセルされた場合は選択を戻す
-            if (track === 'melody') {
-              soundSelect.value = this.filenames.melody.get(this.currentTrack) || 'sine';
-            } else if (track === 'beat1') {
-              soundSelect.value = this.filenames.beat1 || 'sine';
-            } else if (track === 'beat2') {
-              soundSelect.value = this.filenames.beat2 || 'sine';
-            }
-            if (soundSelect.value !== 'sine' && soundSelect.value !== 'silent') {
-              soundSelectLabel.classList.add('added-sound');
-            }
-            return;
-          }
-          const isAudio = Array.from(files).every(file => file.type.startsWith('audio/'));
-          if (!isAudio) {
-            alert(i18next.t('error_not_audio_file'));
-            return;
-          }
-          [...files].forEach(file => {
-            const pitchShift = this.extractPitchShiftFromFilename(file.name);
-            this.addAudioFile(file, pitchShift);
-          });
-          const file = files[0];
-          await this.setAudio(track, file, file.name);
-          if (this.paused) soundPreview(file.name);
+        const files = await this.selectAudioFiles();
+        if (!files || files.length === 0) {
+          this.syncMainSoundControls();
+          return;
+        }
+        const isAudio = Array.from(files).every(file => file.type.startsWith('audio/'));
+        if (!isAudio) {
+          alert(i18next.t('error_not_audio_file'));
+          return;
+        }
+        [...files].forEach(file => {
+          const pitchShift = this.extractPitchShiftFromFilename(file.name);
+          this.addAudioFile(file, pitchShift);
         });
+        const file = files[0];
+        await this.setAudio(track, file, file.name);
+        if (this.paused) soundPreview(file.name);
       });
     });
 
@@ -1102,13 +1085,6 @@ class Sequencer {
       playbackDragging = false;
     });
 
-    document.getElementById('clear-sounds-btn')?.addEventListener('click', () => {
-      if (confirm(i18next.t('confirm_clear_sounds'))) {
-        this.clearSounds();
-        this.saveData();
-      }
-    });
-
     document.getElementById('clear-all-btn')?.addEventListener('click', () => {
       if (confirm(i18next.t('confirm_clear_all'))) {
         this.clearAll();
@@ -1142,6 +1118,148 @@ class Sequencer {
         this.stop();
       });
     }
+  }
+
+  private setupBulkSoundDialog() {
+    const dialog = document.getElementById('sound-sources-dialog') as HTMLDialogElement | null;
+    const melodyGrid = document.getElementById('sound-sources-melody') as HTMLDivElement | null;
+    const beatGrid = document.getElementById('sound-sources-beat') as HTMLDivElement | null;
+    if (!dialog || !melodyGrid || !beatGrid || melodyGrid.childElementCount > 0) {
+      return;
+    }
+
+    for (let track = 0; track < 16; track++) {
+      const row = this.createBulkSoundRow(`${track + 1}.`, { track: 'melody', melodyTrack: track }, true);
+      melodyGrid.appendChild(row);
+    }
+
+    beatGrid.appendChild(this.createBulkSoundRow('B1.', { track: 'beat1' }, false));
+    beatGrid.appendChild(this.createBulkSoundRow('B2.', { track: 'beat2' }, false));
+
+    document.getElementById('sound-sources-settings-btn')?.addEventListener('click', () => {
+      this.syncBulkSoundDialog();
+      dialog.showModal();
+    });
+    document.getElementById('sound-sources-clear-btn')?.addEventListener('click', () => {
+      if (confirm(i18next.t('confirm_clear_sounds'))) {
+        this.clearSounds();
+        this.saveData();
+      }
+    });
+    document.getElementById('sound-sources-add-btn')?.addEventListener('click', async () => {
+      const files = await this.selectAudioFiles();
+      if (!files || files.length === 0) {
+        this.syncBulkSoundDialog();
+        return;
+      }
+      const isAudio = Array.from(files).every(file => file.type.startsWith('audio/'));
+      if (!isAudio) {
+        alert(i18next.t('error_not_audio_file'));
+        return;
+      }
+      [...files].forEach(file => {
+        const pitchShift = this.extractPitchShiftFromFilename(file.name);
+        this.addAudioFile(file, pitchShift);
+      });
+      const file = files[0];
+      await this.setAudio(this.activeBulkSoundTarget.track, file, file.name, this.activeBulkSoundTarget.melodyTrack);
+    });
+
+    this.syncBulkSoundDialog();
+  }
+
+  private createBulkSoundRow(indexLabel: string, target: SoundAssignmentTarget, showInstrument: boolean) {
+    const row = document.createElement('div');
+    row.className = 'sound-sources-row';
+    row.dataset.track = target.track;
+    if (typeof target.melodyTrack === 'number') {
+      row.dataset.melodyTrack = target.melodyTrack.toString();
+    }
+
+    const index = document.createElement('span');
+    index.className = 'sound-sources-index';
+    index.textContent = indexLabel;
+
+    const control = document.createElement('div');
+    control.className = 'sound-sources-control';
+
+    const selectLabel = document.createElement('label');
+    selectLabel.className = 'sound-select-label';
+
+    const select = document.createElement('select');
+    select.className = 'sound-select';
+    this.cloneBaseSoundOptions().forEach(option => {
+      select.appendChild(option);
+    });
+
+    const removeButton = document.createElement('button');
+    removeButton.type = 'button';
+    removeButton.className = 'remove-sound material-icons danger';
+    removeButton.textContent = 'delete';
+
+    const instrumentName = document.createElement('output');
+    instrumentName.className = 'bulk-instrument-name';
+    instrumentName.hidden = !showInstrument;
+
+    selectLabel.appendChild(select);
+    selectLabel.appendChild(removeButton);
+    control.appendChild(selectLabel);
+    control.appendChild(instrumentName);
+    row.appendChild(index);
+    row.appendChild(control);
+    select.addEventListener('change', async () => {
+      const filename = select.value;
+      await this.setAudio(target.track, this.getAudioFile(filename), filename, target.melodyTrack);
+      const soundPreview = (filename: string) => {
+        const noteId = `preview-sound-select-${Date.now()}`
+        const note: Note = {
+          id: noteId,
+          track: this.currentTrack,
+          pitch: 60, // C4
+          start: 0,
+          length: this.defaultNoteLength,
+          velocity: 100
+        };
+        this.audioManager.playNotePreview(note, filename, this.bpm * this.playbackSpeed, noteId);
+      };
+      if (this.paused) soundPreview(filename);
+    });
+    removeButton.addEventListener('click', () => {
+      const filename = this.getAssignedFilename(target.track, target.melodyTrack);
+      if (filename === 'sine' || filename === 'silent') {
+        return;
+      }
+      if (confirm(i18next.t('confirm_remove_sound_file', { filename: filenameToName(filename) }))) {
+        this.removeAudioFile(filename);
+      }
+    });
+
+    return row;
+  }
+
+  private cloneBaseSoundOptions() {
+    const template = document.querySelector('.sound[data-track="melody"] .sound-select') as HTMLSelectElement | null;
+    return template ? Array.from(template.options).map(option => option.cloneNode(true) as HTMLOptionElement) : [];
+  }
+
+  private selectAudioFiles() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.wav,.mp3,.ogg,.flac,.aac,.m4a';
+    input.multiple = true;
+
+    const promise = new Promise<FileList | null>((resolve) => {
+      input.onchange = (event) => {
+        const files = (event.target as HTMLInputElement).files || null;
+        resolve(files && files.length > 0 ? files : null);
+      };
+      input.oncancel = () => {
+        resolve(null);
+      };
+    });
+
+    input.click();
+    return promise;
   }
 
   private setupDragAndDrop() {
@@ -1208,7 +1326,7 @@ class Sequencer {
     }
   }
 
-  private getTrackTypeFromDropZone(dropZone: HTMLElement): string | null {
+  private getTrackTypeFromDropZone(dropZone: HTMLElement): SoundTrackKey | null {
     // Check if it's the piano roll section (melody track)
     if (dropZone.classList.contains('piano-roll-section')) {
       return 'melody';
@@ -1242,6 +1360,9 @@ class Sequencer {
       option.text = filenameToName(file.name);
       soundSelect.appendChild(option);
     });
+
+    this.syncMainSoundControls();
+    this.syncBulkSoundDialog();
   }
 
   private removeAudioFile(filename: string) {
@@ -1273,34 +1394,25 @@ class Sequencer {
     if (this.filenames.beat2 === filename) {
       this.setSine('beat2');
     }
+
+    this.syncMainSoundControls();
+    this.syncBulkSoundDialog();
   }
 
-  private async setAudio(track: string, file: File | null = null, filename: string = file?.name || 'sine') {
+  private async setAudio(track: SoundTrackKey, file: File | null = null, filename: string = file?.name || 'sine', melodyTrack: number = this.currentTrack) {
     const audioFile = this.files.find(f => f.file.name === filename) || null;
     const pitchShift = audioFile ? audioFile.pitchShift : 0;
     const isSine = filename === 'sine';
     const isSilent = filename === 'silent';
     const isCustomSound = !isSine && !isSilent;
-    const soundButtonsContainer = document.querySelector(`.sound[data-track="${track}"]`) as HTMLElement;
-    const soundSelectLabel = soundButtonsContainer.querySelector('.sound-select-label') as HTMLElement;
-    const soundSelect = soundButtonsContainer.querySelector('.sound-select') as HTMLSelectElement;
-    const pitchShiftLabel = document.querySelector('.pitch-shift-label') as HTMLElement;
-    const pitchShiftInput = document.getElementById('melody-pitch-shift') as HTMLInputElement;
-    
-    // Select要素の選択を更新
-    soundSelect.value = filename;
     
     if (track === 'melody') {
-      this.filenames.melody.set(this.currentTrack, filename);
-      pitchShiftLabel.hidden = isSine || isSilent;
+      this.filenames.melody.set(melodyTrack, filename);
       if (file) {
         await this.audioManager.setMelodyAudio(file);
       }
       if (pitchShift && isCustomSound) {
-        pitchShiftInput.valueAsNumber = pitchShift;
         this.audioManager.setMelodyPitchShift(filename, pitchShift);
-      } else {
-        pitchShiftInput.value = '';
       }
     } else if (track === 'beat1') {
       this.filenames.beat1 = filename;
@@ -1317,15 +1429,13 @@ class Sequencer {
         await this.audioManager.setBeatSample(1, file);
       }
     }
-    if (isCustomSound) {
-      soundSelectLabel.classList.add('added-sound');
-    } else {
-      soundSelectLabel.classList.remove('added-sound');
-    }
+
+    this.syncMainSoundControls();
+    this.syncBulkSoundDialog();
   }
 
-  private setSine(track: string) {
-    return this.setAudio(track);
+  private setSine(track: SoundTrackKey, melodyTrack?: number) {
+    return this.setAudio(track, null, 'sine', melodyTrack);
   }
 
   private getFilenameByTrack(track: number): string {
@@ -1814,9 +1924,7 @@ class Sequencer {
       this.instrumentCodes = savedInstrumentCodes;
       const instrumentNameOutput = document.getElementById('instrument-name') as HTMLOutputElement;
       if (instrumentNameOutput) {
-        const currentInstrumentCode = this.instrumentCodes[this.currentTrack] || -1;
-        instrumentNameOutput.dataset.gmNum = currentInstrumentCode.toString();
-        instrumentNameOutput.value = this.gmInstrumentCodeToName(currentInstrumentCode);
+        this.updateInstrumentOutput(instrumentNameOutput, this.getInstrumentCode(this.currentTrack));
       }
     }
 
@@ -1888,6 +1996,9 @@ class Sequencer {
         });
       }
     }
+
+    this.syncMainSoundControls();
+    this.syncBulkSoundDialog();
 
     this.renderTracks();
   }
@@ -1974,30 +2085,8 @@ class Sequencer {
       pianoRollSection.dataset.track = (this.currentTrack + 1).toString();
       resetAnimation(pianoRollSection, 'notify');
     }
-
-    const melodySoundButtonsContainer = document.querySelector('.sound[data-track="melody"]') as HTMLElement;
-    const soundSelectLabel = melodySoundButtonsContainer.querySelector('.sound-select-label') as HTMLElement;
-    const soundSelect = melodySoundButtonsContainer.querySelector('.sound-select') as HTMLSelectElement;
-    const pitchShiftLabel = document.querySelector('.pitch-shift-label') as HTMLElement;
-    const instrumentNameOutput = document.getElementById('instrument-name') as HTMLOutputElement;
-
-    const filename = this.filenames.melody.get(this.currentTrack) || 'sine';
-    const isCustomSound = filename !== 'sine' && filename !== 'silent';
-    soundSelect.value = filename;
-    if (isCustomSound) {
-      soundSelectLabel.classList.add('added-sound');
-    } else {
-      soundSelectLabel.classList.remove('added-sound');
-    }
-    pitchShiftLabel.hidden = !isCustomSound;
-    const audioFile = this.files.find(f => f.file.name === filename) || null;
-    if (audioFile) {
-      const pitchShiftInput = document.getElementById('melody-pitch-shift') as HTMLInputElement;
-      if (pitchShiftInput) pitchShiftInput.valueAsNumber = audioFile.pitchShift;
-    }
-    const instrumentCode = this.instrumentCodes[this.currentTrack] || -1;
-    instrumentNameOutput.dataset.gmNum = instrumentCode.toString();
-    instrumentNameOutput.value = this.gmInstrumentCodeToName(instrumentCode);
+    this.syncMainSoundControls();
+    this.syncBulkSoundDialog();
     
     // Clear selected notes when switching tracks
     this.selectedNotes.clear();
@@ -2076,23 +2165,22 @@ class Sequencer {
     this.audioManager.setBeatSample(0, null);
     this.audioManager.setBeatSample(1, null);
 
-    const soundButtonsContainers = document.querySelectorAll('.sound');
-    soundButtonsContainers.forEach(container => {
-      const soundSelectLabel = container.querySelector('.sound-select-label') as HTMLElement;
-      const soundSelect = container.querySelector('.sound-select') as HTMLSelectElement;
-      // Select要素から追加されたオプションを削除
+    const soundSelects = document.querySelectorAll('.sound-select') as NodeListOf<HTMLSelectElement>;
+    soundSelects.forEach(soundSelect => {
       Array.from(soundSelect.options).forEach(option => {
         if (option.value !== 'sine' && option.value !== 'silent') {
           option.remove();
         }
       });
       soundSelect.value = 'sine';
-      soundSelectLabel.classList.remove('added-sound');
+      soundSelect.closest('.sound-select-label')?.classList.remove('added-sound');
     });
     const pitchShiftLabel = document.querySelector('.pitch-shift-label') as HTMLElement;
     if (pitchShiftLabel) pitchShiftLabel.hidden = true;
     const pitchShiftInput = document.getElementById('melody-pitch-shift') as HTMLInputElement;
     if (pitchShiftInput) pitchShiftInput.value = '';
+    this.syncMainSoundControls();
+    this.syncBulkSoundDialog();
   }
 
   private clearAll() {
@@ -2122,8 +2210,7 @@ class Sequencer {
     this.beats.forEach(beat => this.renderBeat(beat));
     const instrumentNameOutput = document.getElementById('instrument-name') as HTMLOutputElement;
     if (instrumentNameOutput) {
-      instrumentNameOutput.dataset.gmNum = '-1';
-      instrumentNameOutput.value = this.gmInstrumentCodeToName(-1);
+      this.updateInstrumentOutput(instrumentNameOutput, -1);
     }
     const bpmSlider = document.getElementById('bpm-slider') as HTMLInputElement;
     const bpmValue = document.getElementById('bpm-value') as HTMLInputElement;
@@ -2496,6 +2583,103 @@ class Sequencer {
     return i18next.t(`general_midi.${String(instrumentCode).padStart(3, '0')}`);
   }
 
+  private getInstrumentCode(track: number): number {
+    return this.instrumentCodes[track] ?? -1;
+  }
+
+  private updateInstrumentOutput(output: HTMLOutputElement | null, instrumentCode: number) {
+    if (!output) {
+      return;
+    }
+    const name = this.gmInstrumentCodeToName(instrumentCode);
+    output.dataset.gmNum = instrumentCode.toString();
+    output.value = name;
+    output.textContent = name;
+  }
+
+  private getAudioFile(filename: string) {
+    return this.files.find(file => file.file.name === filename)?.file || null;
+  }
+
+  private getAssignedFilename(track: SoundTrackKey, melodyTrack: number = this.currentTrack) {
+    if (track === 'melody') {
+      return this.filenames.melody.get(melodyTrack) || 'sine';
+    }
+    if (track === 'beat1') {
+      return this.filenames.beat1 || 'sine';
+    }
+    return this.filenames.beat2 || 'sine';
+  }
+
+  private updateSoundSelectState(soundSelectLabel: HTMLElement | null, soundSelect: HTMLSelectElement | null, filename: string) {
+    if (!soundSelectLabel || !soundSelect) {
+      return;
+    }
+    soundSelect.value = filename;
+    if (filename !== 'sine' && filename !== 'silent') {
+      soundSelectLabel.classList.add('added-sound');
+    } else {
+      soundSelectLabel.classList.remove('added-sound');
+    }
+  }
+
+  private syncMainSoundControls() {
+    const melodyContainer = document.querySelector('.sound[data-track="melody"]') as HTMLElement | null;
+    const beat1Container = document.querySelector('.sound[data-track="beat1"]') as HTMLElement | null;
+    const beat2Container = document.querySelector('.sound[data-track="beat2"]') as HTMLElement | null;
+    const pitchShiftLabel = document.querySelector('.pitch-shift-label') as HTMLElement | null;
+    const pitchShiftInput = document.getElementById('melody-pitch-shift') as HTMLInputElement | null;
+    const instrumentNameOutput = document.getElementById('instrument-name') as HTMLOutputElement | null;
+
+    const melodyFilename = this.getAssignedFilename('melody', this.currentTrack);
+    this.updateSoundSelectState(
+      melodyContainer?.querySelector('.sound-select-label') as HTMLElement | null,
+      melodyContainer?.querySelector('.sound-select') as HTMLSelectElement | null,
+      melodyFilename,
+    );
+    if (pitchShiftLabel) {
+      pitchShiftLabel.hidden = melodyFilename === 'sine' || melodyFilename === 'silent';
+    }
+    if (pitchShiftInput) {
+      const audioFile = this.files.find(file => file.file.name === melodyFilename) || null;
+      if (audioFile && melodyFilename !== 'sine' && melodyFilename !== 'silent') {
+        pitchShiftInput.valueAsNumber = audioFile.pitchShift;
+      } else {
+        pitchShiftInput.value = '';
+      }
+    }
+    this.updateInstrumentOutput(instrumentNameOutput, this.getInstrumentCode(this.currentTrack));
+
+    this.updateSoundSelectState(
+      beat1Container?.querySelector('.sound-select-label') as HTMLElement | null,
+      beat1Container?.querySelector('.sound-select') as HTMLSelectElement | null,
+      this.getAssignedFilename('beat1'),
+    );
+    this.updateSoundSelectState(
+      beat2Container?.querySelector('.sound-select-label') as HTMLElement | null,
+      beat2Container?.querySelector('.sound-select') as HTMLSelectElement | null,
+      this.getAssignedFilename('beat2'),
+    );
+  }
+
+  private syncBulkSoundDialog() {
+    const rows = document.querySelectorAll('.sound-sources-row') as NodeListOf<HTMLElement>;
+    rows.forEach(row => {
+      const track = row.dataset.track as SoundTrackKey;
+      const melodyTrack = row.dataset.melodyTrack ? Number(row.dataset.melodyTrack) : this.currentTrack;
+      const filename = this.getAssignedFilename(track, melodyTrack);
+      const selectLabel = row.querySelector('.sound-select-label') as HTMLElement | null;
+      const select = row.querySelector('.sound-select') as HTMLSelectElement | null;
+      const instrumentOutput = row.querySelector('.bulk-instrument-name') as HTMLOutputElement | null;
+      this.updateSoundSelectState(selectLabel, select, filename);
+      if (track === 'melody' && instrumentOutput) {
+        this.updateInstrumentOutput(instrumentOutput, this.getInstrumentCode(melodyTrack));
+      } else if (instrumentOutput) {
+        this.updateInstrumentOutput(instrumentOutput, -1);
+      }
+    });
+  }
+
   private playNotes(currentBeat: number) {
     this.notes.forEach(note => {
       const noteIntersected = note.start <= currentBeat && note.start + note.length >= currentBeat;
@@ -2644,9 +2828,7 @@ class Sequencer {
         sequencerContainer.style.setProperty('--grid-size', this.gridSize.toString());
       }
       if (instrumentNameOutput) {
-        const instrumentCode = this.instrumentCodes[this.currentTrack] || -1;
-        instrumentNameOutput.dataset.gmNum = instrumentCode.toString();
-        instrumentNameOutput.value = this.gmInstrumentCodeToName(instrumentCode);
+        this.updateInstrumentOutput(instrumentNameOutput, this.getInstrumentCode(this.currentTrack));
       }
       if (bpmSlider) bpmSlider.valueAsNumber = this.bpm;
       if (bpmValue) bpmValue.valueAsNumber = this.bpm;
@@ -2661,6 +2843,8 @@ class Sequencer {
       
       // Save data
       this.saveData();
+
+      this.syncBulkSoundDialog();
       
       this.title = filenameToName(file.name);
       document.title = `${this.title} - ${i18next.t('title')}`;

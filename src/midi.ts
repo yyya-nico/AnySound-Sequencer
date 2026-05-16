@@ -552,7 +552,7 @@ export class MidiConverter {
           }
         } else if (event.type === 'programChange' && typeof event.program === 'number') {
           const channel = event.channel || 0;
-          if (channel !== 9 && !instrumentCodes[channel]) { // Ignore percussion channel
+          if (channel !== 9 && instrumentCodes[channel] === undefined) { // Ignore percussion channel
             instrumentCodes[channel] = event.program;
           }
         } else if (event.type === 'meta' && event.metaType === 0x2F) {

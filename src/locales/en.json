@@ -34,6 +34,8 @@
   "error_not_audio_file": "Not an audio file.",
   "confirm_remove_sound_file": "Are you sure you want to remove the sound source file '{{filename}}'?",
   "pitch_shift": "Pitch Shift",
+  "sound_sources_settings": "Sound Sources Settings",
+  "close": "Close",
   "clear_sounds": "Clear Sound Sources",
   "confirm_clear_sounds": "Are you sure you want to clear all sound sources?",
   "menu": "Menu",

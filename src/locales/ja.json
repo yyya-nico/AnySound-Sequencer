@@ -34,6 +34,8 @@
   "error_not_audio_file": "音源ファイルではありません。",
   "confirm_remove_sound_file": "音源ファイル '{{filename}}' を削除しますか？",
   "pitch_shift": "ピッチシフト",
+  "sound_sources_settings": "音源の設定",
+  "close": "閉じる",
   "clear_sounds": "音源ファイルをすべて消去",
   "confirm_clear_sounds": "音源ファイルをすべて消去しますか？",
   "menu": "メニュー",
