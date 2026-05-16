@@ -1059,12 +1059,10 @@ header {
 
 @media (width < 768px) {
   .sound-sources-dialog[open] {
-    gap: 16px;
     width: calc(100vw - 16px);
     max-width: calc(100vw - 16px);
     max-height: calc(100dvh - 16px);
     padding: 16px;
-    margin: 8px;
   }
 
   .sound-sources-dialog__grid {
@@ -1072,9 +1070,16 @@ header {
     gap: 10px;
   }
 
+  #sound-sources-melody {
+    @for $i from 1 through 8 {
+      .sound-sources-row:nth-child(8n + #{$i}) {
+        grid-row: auto;
+      }
+    }
+  }
+
   .sound-sources-row {
-    grid-template-columns: 32px minmax(0, 1fr);
-    padding-inline: 4px;
+    grid-template-columns: 28px minmax(0, 1fr);
   }
 }
 
