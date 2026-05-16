@@ -119,7 +119,7 @@ interface InstrumentCodes {
 
 interface AudioSample {
   buffer: AudioBuffer | null;
-  type: 'sine' | 'file';
+  type: 'sine' | 'file' | 'silent';
 }
 
 // Audio Manager Class
@@ -209,6 +209,10 @@ class AudioManager {
       this.beatSamples.set(track, { buffer: null, type: 'sine' });
       return Promise.resolve();
     }
+  }
+
+  setBeatSilence(track: number) {
+    this.beatSamples.set(track, { buffer: null, type: 'silent' });
   }
   
   stopPreview(previewId: string) {
@@ -306,7 +310,7 @@ class AudioManager {
 
   playBeat(beat: Beat, when: number = 0) {
     const sample = this.beatSamples.get(beat.track);
-    if (!sample) return;
+    if (!sample || sample.type === 'silent') return;
 
     const source = this.context.createBufferSource();
     const gain = this.context.createGain();
@@ -451,7 +455,7 @@ class AudioManager {
     const beatInfos: BeatInfo[] = [];
     params.beats.forEach(beat => {
       const sample = this.beatSamples.get(beat.track);
-      if (!sample) return;
+      if (!sample || sample.type === 'silent') return;
       const startSec = beatPosToSeconds(beat.position);
       const durationSec = 0.2;
       const startSample = Math.floor(startSec * sampleRate);
@@ -877,18 +881,20 @@ class Sequencer {
           // 正弦波を選択
           await this.setSine(track);
           if (this.paused) soundPreview('sine');
+        } else if (value === 'silent') {
+          await this.setAudio(track, null, value);
         } else {
           // 既存の音源ファイルを選択
           const filename = value;
           const file = this.files.find(f => f.file.name === filename)?.file || null;
-          await this.setAudio(track, file);
+          await this.setAudio(track, file, filename);
           if (this.paused) soundPreview(filename);
         }
       });
 
       removeSoundBtn.addEventListener('click', async () => {
         const filename = soundSelect.value;
-        if (filename === 'sine') return;
+        if (filename === 'sine' || filename === 'silent') return;
         if (filename && confirm(i18next.t('confirm_remove_sound_file', { filename: filenameToName(filename) }))) {
           this.removeAudioFile(filename);
         }
@@ -905,7 +911,7 @@ class Sequencer {
             } else if (track === 'beat2') {
               soundSelect.value = this.filenames.beat2 || 'sine';
             }
-            if (soundSelect.value !== 'sine') {
+            if (soundSelect.value !== 'sine' && soundSelect.value !== 'silent') {
               soundSelectLabel.classList.add('added-sound');
             }
             return;
@@ -920,7 +926,7 @@ class Sequencer {
             this.addAudioFile(file, pitchShift);
           });
           const file = files[0];
-          await this.setAudio(track, file);
+          await this.setAudio(track, file, file.name);
           if (this.paused) soundPreview(file.name);
         });
       });
@@ -1239,7 +1245,7 @@ class Sequencer {
   }
 
   private removeAudioFile(filename: string) {
-    if (filename === 'sine') return;
+    if (filename === 'sine' || filename === 'silent') return;
     const soundSelects = document.querySelectorAll('.sound-select') as NodeListOf<HTMLSelectElement>;
     soundSelects.forEach(soundSelect => {
       // 指定のオプションを削除
@@ -1269,11 +1275,12 @@ class Sequencer {
     }
   }
 
-  private async setAudio(track: string, file: File | null = null) {
-    const filename = file?.name || 'sine';
+  private async setAudio(track: string, file: File | null = null, filename: string = file?.name || 'sine') {
     const audioFile = this.files.find(f => f.file.name === filename) || null;
     const pitchShift = audioFile ? audioFile.pitchShift : 0;
     const isSine = filename === 'sine';
+    const isSilent = filename === 'silent';
+    const isCustomSound = !isSine && !isSilent;
     const soundButtonsContainer = document.querySelector(`.sound[data-track="${track}"]`) as HTMLElement;
     const soundSelectLabel = soundButtonsContainer.querySelector('.sound-select-label') as HTMLElement;
     const soundSelect = soundButtonsContainer.querySelector('.sound-select') as HTMLSelectElement;
@@ -1285,9 +1292,11 @@ class Sequencer {
     
     if (track === 'melody') {
       this.filenames.melody.set(this.currentTrack, filename);
-      pitchShiftLabel.hidden = isSine;
-      await this.audioManager.setMelodyAudio(file);
-      if (pitchShift) {
+      pitchShiftLabel.hidden = isSine || isSilent;
+      if (file) {
+        await this.audioManager.setMelodyAudio(file);
+      }
+      if (pitchShift && isCustomSound) {
         pitchShiftInput.valueAsNumber = pitchShift;
         this.audioManager.setMelodyPitchShift(filename, pitchShift);
       } else {
@@ -1295,15 +1304,23 @@ class Sequencer {
       }
     } else if (track === 'beat1') {
       this.filenames.beat1 = filename;
-      await this.audioManager.setBeatSample(0, file);
+      if (isSilent) {
+        this.audioManager.setBeatSilence(0);
+      } else {
+        await this.audioManager.setBeatSample(0, file);
+      }
     } else if (track === 'beat2') {
       this.filenames.beat2 = filename;
-      await this.audioManager.setBeatSample(1, file);
+      if (isSilent) {
+        this.audioManager.setBeatSilence(1);
+      } else {
+        await this.audioManager.setBeatSample(1, file);
+      }
     }
-    if (isSine) {
-      soundSelectLabel.classList.remove('added-sound');
-    } else {
+    if (isCustomSound) {
       soundSelectLabel.classList.add('added-sound');
+    } else {
+      soundSelectLabel.classList.remove('added-sound');
     }
   }
 
@@ -1841,25 +1858,32 @@ class Sequencer {
               if (pitchShiftInput) pitchShiftInput.valueAsNumber = audioFile.pitchShift;
             }
             const pitchShiftLabel = document.querySelector('.pitch-shift-label') as HTMLElement;
-            const isSine = filename === 'sine';
             soundSelect.value = filename;
-            pitchShiftLabel.hidden = isSine;
+            const isCustomSound = filename !== 'sine' && filename !== 'silent';
+            pitchShiftLabel.hidden = !isCustomSound;
           } else {
             const filename = value as string | null || 'sine';
             const file = this.files.find(f => f.file.name === filename)?.file || null;
             soundSelect.value = filename;
-            if (!file) return;
-            if (track === 'beat1') {
-              this.audioManager.setBeatSample(0, file);
-            } else if (track === 'beat2') {
-              this.audioManager.setBeatSample(1, file);
+            if (filename === 'silent') {
+              if (track === 'beat1') {
+                this.audioManager.setBeatSilence(0);
+              } else if (track === 'beat2') {
+                this.audioManager.setBeatSilence(1);
+              }
+            } else if (file) {
+              if (track === 'beat1') {
+                this.audioManager.setBeatSample(0, file);
+              } else if (track === 'beat2') {
+                this.audioManager.setBeatSample(1, file);
+              }
             }
           }
-          const isSine = soundSelect.value === 'sine';
-          if (isSine) {
-            soundSelectLabel.classList.remove('added-sound');
-          } else {
+          const isCustomSound = soundSelect.value !== 'sine' && soundSelect.value !== 'silent';
+          if (isCustomSound) {
             soundSelectLabel.classList.add('added-sound');
+          } else {
+            soundSelectLabel.classList.remove('added-sound');
           }
         });
       }
@@ -1958,14 +1982,14 @@ class Sequencer {
     const instrumentNameOutput = document.getElementById('instrument-name') as HTMLOutputElement;
 
     const filename = this.filenames.melody.get(this.currentTrack) || 'sine';
-    const isSine = filename === 'sine';
+    const isCustomSound = filename !== 'sine' && filename !== 'silent';
     soundSelect.value = filename;
-    if (isSine) {
-      soundSelectLabel.classList.remove('added-sound');
-    } else {
+    if (isCustomSound) {
       soundSelectLabel.classList.add('added-sound');
+    } else {
+      soundSelectLabel.classList.remove('added-sound');
     }
-    pitchShiftLabel.hidden = isSine;
+    pitchShiftLabel.hidden = !isCustomSound;
     const audioFile = this.files.find(f => f.file.name === filename) || null;
     if (audioFile) {
       const pitchShiftInput = document.getElementById('melody-pitch-shift') as HTMLInputElement;
@@ -2058,7 +2082,7 @@ class Sequencer {
       const soundSelect = container.querySelector('.sound-select') as HTMLSelectElement;
       // Select要素から追加されたオプションを削除
       Array.from(soundSelect.options).forEach(option => {
-        if (option.value !== 'sine' && option.value !== 'add-sound') {
+        if (option.value !== 'sine' && option.value !== 'silent') {
           option.remove();
         }
       });
