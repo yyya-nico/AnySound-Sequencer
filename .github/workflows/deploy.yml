@@ -43,6 +43,49 @@ jobs:
         with:
           name: dist
           path: dist/
+      - name: Inject GTM snippet (deploy only)
+        shell: "bash"
+        env:
+          GTM_CONTAINER_ID: ${{ vars.GTM_CONTAINER_ID }}
+        run: |
+          if [[ -z "${GTM_CONTAINER_ID}" ]]; then
+            echo "GTM_CONTAINER_ID is not set. Skipping GTM injection."
+            exit 0
+          fi
+
+          INDEX_FILE="dist/index.html"
+          if [[ ! -f "${INDEX_FILE}" ]]; then
+            echo "${INDEX_FILE} was not found."
+            exit 1
+          fi
+
+          if grep -q "googletagmanager.com/gtm.js?id=${GTM_CONTAINER_ID}" "${INDEX_FILE}"; then
+            echo "GTM snippet already exists. Skipping injection."
+            exit 0
+          fi
+
+          awk -v id="${GTM_CONTAINER_ID}" '
+            /<body[^>]*>/ && !body_done {
+              print;
+              print "    <!-- Google Tag Manager (noscript) -->";
+              print "    <noscript><iframe src=\"https://www.googletagmanager.com/ns.html?id=" id "\" height=\"0\" width=\"0\" style=\"display:none;visibility:hidden\"></iframe></noscript>";
+              print "    <!-- End Google Tag Manager (noscript) -->";
+              body_done = 1;
+              next;
+            }
+            /<\/head>/ && !head_done {
+              print "    <!-- Google Tag Manager -->";
+              print "    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({\x27gtm.start\x27:new Date().getTime(),event:\x27gtm.js\x27});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!=\x27dataLayer\x27?\x27&l=\x27+l:\x27\x27;j.async=true;j.src=\x27https://www.googletagmanager.com/gtm.js?id=\x27+i+dl;f.parentNode.insertBefore(j,f);})(window,document,\x27script\x27,\x27dataLayer\x27,\x27" id "\x27);</script>";
+              print "    <!-- End Google Tag Manager -->";
+              print;
+              head_done = 1;
+              next;
+            }
+            { print }
+          ' "${INDEX_FILE}" > "${INDEX_FILE}.tmp"
+
+          mv "${INDEX_FILE}.tmp" "${INDEX_FILE}"
+          echo "Injected GTM snippets into ${INDEX_FILE}."
       - name: Deploy to server
         uses: easingthemes/ssh-deploy@v6.0.3
         with:
